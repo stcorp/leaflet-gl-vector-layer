@@ -1,9 +1,8 @@
 import 'leaflet/dist/leaflet.css';
 import * as L from 'leaflet';
-import '../src/styles/index.scss';
+import '@stcorp/leaflet-gl-vector-layer/dist/index.css';
+import {LeafletGlVectorLayer, LeafletGlVectorLayerWrapper} from '../src';
 import {FileParser} from "./fileParser";
-import {LeafletGlVectorLayerWrapper} from "../src";
-import {LeafletGlVectorLayer} from "../src";
 
 const map = L.map('map', {})
   .setView([50.00, 14.44], 0);

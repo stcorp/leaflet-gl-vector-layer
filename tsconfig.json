@@ -14,7 +14,6 @@
     "strict": true,
     "target": "es2018",
     "lib": ["es2019", "dom"],
-    "typeRoots": ["src/types"],
     "strictPropertyInitialization": false
   },
   "exclude": ["node_modules", "**/*.json", "dist", "example"]

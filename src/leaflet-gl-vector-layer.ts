@@ -109,7 +109,7 @@ export class LeafletGlVectorLayer extends Layer {
         return this;
     }
 
-    private updateColors(gradient: chroma.Scale|null|undefined) {
+    private updateColors(gradient: chroma.Scale|null|undefined): void {
         if(this.renderer && gradient) {
             this.renderer.setCustomColorMap(gradient);
             if(this.isFirstRun) {
@@ -123,12 +123,12 @@ export class LeafletGlVectorLayer extends Layer {
         }
     }
 
-    private updateRender() {
+    private updateRender(): void {
         this.renderer?.updateBuffers();
         this._reset();
     }
 
-    private updateValues(limits: {min: number, max: number}) {
+    private updateValues(limits: {min: number, max: number}): void {
         this.dataHelper.updateLimits(limits);
         this.renderer?.processData(this.updateRender.bind(this));
     }

@@ -1,6 +1,7 @@
 import {LeafletGlVectorLayerControlWrapper} from "./leaflet-gl-vector-layer-controls-wrapper";
 import {LeafletGlVectorLayerControl} from "./leaflet-gl-vector-layer-controls";
 import {LeafletGlVectorLayer} from "./leaflet-gl-vector-layer";
+import * as L from 'leaflet';
 export class LeafletGlVectorLayerWrapper extends L.Layer {
 
   private layers: LeafletGlVectorLayer[] = [];
