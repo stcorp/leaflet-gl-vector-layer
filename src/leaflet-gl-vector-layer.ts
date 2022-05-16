@@ -19,10 +19,10 @@ import {DataHelper} from "./helpers/data-helper";
 import {LeafletGlVectorLayerWrapper} from "./leaflet-gl-vector-layer-wrapper";
 import {guidGenerator} from "./helpers/guid-generator";
 import {LeafletGlVectorLayerOptions} from "./types/leaflet-gl-vector-layer-options";
-interface ExtendedOptions extends L.Layer {
+interface ExtendedOptions extends L.GridLayerOptions {
     leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions
 }
-export class LeafletGlVectorLayer extends Layer {
+export class LeafletGlVectorLayer extends L.GridLayer {
     public canvas: HTMLCanvasElement;
     public _map: any;
     public renderer: SwathRenderer|GridRenderer|PointsRenderer|undefined;
@@ -35,7 +35,7 @@ export class LeafletGlVectorLayer extends Layer {
     public id: string;
     private isFirstRun = true;
     constructor(newOptions: ExtendedOptions) {
-        super();
+        super(newOptions);
         this.id = guidGenerator()
         setOptions(this, {...this.options, leafletGlVectorLayerOptions: newOptions.leafletGlVectorLayerOptions});
     }
@@ -67,6 +67,9 @@ export class LeafletGlVectorLayer extends Layer {
         this.canvas.width = map.getSize().x;
         this.canvas.height = map.getSize().y;
         this.canvas.className = `leaflet-zoom-${this.isAnimated() ? "animated" : "hide"}`;
+        if(this.options.opacity) {
+            this.canvas.style.opacity = this.options.opacity;
+        }
         let RendererMap: {
             [x: string]: typeof SwathRenderer | typeof GridRenderer | typeof PointsRenderer
         } = {

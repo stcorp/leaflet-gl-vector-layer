@@ -1,6 +1,6 @@
 {
   "name": "@stcorp/leaflet-gl-vector-layer",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A GL-powered vector layer for leaflet",
   "main": "./dist/index.js",
   "author": "Martti Kaipiainen",

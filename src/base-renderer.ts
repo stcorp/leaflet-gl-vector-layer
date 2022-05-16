@@ -26,8 +26,10 @@ export abstract class BaseRenderer {
     protected unwrappedGradient: any[][];
     protected colorFidelity: number = 10000;
     protected drawType: GLenum;
+    private pointSizeLoc: any;
     private defaultVertexShader = `    
         uniform mat4 u_matrix;
+        uniform float u_pointSize;
         attribute vec4 a_vertex;
         attribute vec4 a_color;
         varying vec4 v_color;
@@ -42,7 +44,7 @@ export abstract class BaseRenderer {
         
           // pass the color to the fragment shader
           v_color = a_color;
-          gl_PointSize = 4.0;
+          gl_PointSize = u_pointSize;
         }
     
     `
@@ -72,9 +74,11 @@ export abstract class BaseRenderer {
         this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
         this.gl.enable(this.gl.BLEND);
         this.matrix = this.gl.getUniformLocation(this.program, "u_matrix");
+        this.pointSizeLoc = this.gl.getUniformLocation(this.program, "u_pointSize");
         this.mapMatrix.setSize(this.canvas.width, this.canvas.height);
         this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
         this.gl.uniformMatrix4fv(this.matrix, false, this.mapMatrix.array);
+        this.gl.uniform1f(this.pointSizeLoc, leafletGlVectorLayerOptions.pointsize ?? 4.0);
     }
 
     private createShaders() {

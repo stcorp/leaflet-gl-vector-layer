@@ -7,5 +7,6 @@ export interface LeafletGlVectorLayerOptions {
         values: Float64Array
     },
     plot_type: 'points' | 'grid' | 'swath',
-    colorrange: [number, number]
+    colorrange?: [number, number],
+    pointsize?: number
 }
