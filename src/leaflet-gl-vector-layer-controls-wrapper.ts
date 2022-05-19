@@ -5,6 +5,7 @@ import {LeafletGlVectorLayerControl} from "./leaflet-gl-vector-layer-controls";
 import {Subject} from "rxjs";
 import {IColorSlider} from "./types/color-slider";
 import { guidGenerator } from './helpers/guid-generator';
+import {ColorMaps} from "./helpers/color-maps";
 
 interface IPredefinedColorWrapper {
   value: number,
@@ -26,10 +27,10 @@ export class LeafletGlVectorLayerControlWrapper extends L.Control {
   private toggleButtonInner: HTMLElement;
   private resetButton: HTMLElement;
   private resetButtonInner: HTMLElement;
-  private infoButton: HTMLElement;
-  private infoButtonInner: HTMLElement;
-  private infoContainer: HTMLElement;
-  private infoContainerContent: HTMLElement;
+  // private infoButton: HTMLElement;
+  // private infoButtonInner: HTMLElement;
+  // private infoContainer: HTMLElement;
+  // private infoContainerContent: HTMLElement;
   private colorPickerDialogButtonContainer: HTMLElement;
   private colorPickerDialogCancelButton: HTMLElement;
   private colorPickerDialogSubmitButton: HTMLElement;
@@ -72,10 +73,10 @@ export class LeafletGlVectorLayerControlWrapper extends L.Control {
     this.resetButton = L.DomUtil.create('div', 'toggle-button reset-button', this.controlWrapperOuterContainer);
     this.resetButtonInner = L.DomUtil.create('div', 'toggle-button-inner reset-button-inner', this.resetButton);
 
-    this.infoContainer = L.DomUtil.create('div', 'info-container', this.controlWrapperOuterContainer);
-    this.infoContainerContent = L.DomUtil.create('div', 'info-container-content', this.infoContainer);
-    this.infoButton = L.DomUtil.create('div', 'info-button toggle-button', this.controlWrapperOuterContainer);
-    this.infoButtonInner = L.DomUtil.create('div', 'info-button-inner toggle-button-inner', this.infoButton);
+    // this.infoContainer = L.DomUtil.create('div', 'info-container', this.controlWrapperOuterContainer);
+    // this.infoContainerContent = L.DomUtil.create('div', 'info-container-content', this.infoContainer);
+    // this.infoButton = L.DomUtil.create('div', 'info-button toggle-button', this.controlWrapperOuterContainer);
+    // this.infoButtonInner = L.DomUtil.create('div', 'info-button-inner toggle-button-inner', this.infoButton);
 
     this.colorPickerContainer = L.DomUtil.create('div', 'color-picker-dialog color-picker-container', this.controlWrapperOuterContainer);
 
@@ -197,15 +198,15 @@ export class LeafletGlVectorLayerControlWrapper extends L.Control {
     this.subjects.control.next(control);
     this.controlWrapperContentContainer.replaceChildren();
     this.controlWrapperContentContainer.appendChild(this.selectedControl.initialize(this.map, this.mapContainer));
-    this.infoContainerContent.innerHTML =
-      `<div class="info-container-content">
-             <div class="info-container-content-row">
-               <div class="info-container-content-value median"><b>Median:</b> ${this.selectedControl.layer.dataHelper.median}</div>
-             </div>
-             <div class="info-container-content-row">
-               <div class="info-container-content-value median"><b>Mean:</b> ${this.selectedControl.layer.dataHelper.mean}</div>
-             </div>
-          </div>`
+    // this.infoContainerContent.innerHTML =
+    //   `<div class="info-container-content">
+    //          <div class="info-container-content-row">
+    //            <div class="info-container-content-value median"><b>Median:</b> ${this.selectedControl.layer.dataHelper.median}</div>
+    //          </div>
+    //          <div class="info-container-content-row">
+    //            <div class="info-container-content-value median"><b>Mean:</b> ${this.selectedControl.layer.dataHelper.mean}</div>
+    //          </div>
+    //       </div>`
     control.onSelected();
   }
 
@@ -215,27 +216,35 @@ export class LeafletGlVectorLayerControlWrapper extends L.Control {
     this.colorMapDropdownToggle = L.DomUtil.create('div', 'toggle-button color-map-dropdown-toggle', this.controlWrapperOuterContainer);
     this.colorMapDropdownToggleInner = L.DomUtil.create('div', 'toggle-button-inner color-map-dropdown-toggle-inner', this.colorMapDropdownToggle);
     let dropdownInner = L.DomUtil.create('div', 'color-map-dropdown-container-inner', this.colorMapDropdownContainer);
-    let colorMapKeys = Object.keys(chroma.brewer).slice(0, 16);
-    for(let i = 0; i < colorMapKeys.length - 1; i += 2) {
+    let colorMapKeys = Object.keys(chroma.brewer).slice(0, 14);
+    let colorMaps = [
+      chroma.brewer.Spectral,
+      chroma.brewer.Paired,
+      chroma.brewer.Set1,
+      chroma.brewer.Set2,
+      chroma.brewer.Set3,
+      chroma.brewer.Set3,
+    ]
+    console.log(chroma.brewer);
+    for(let i = 0; i < ColorMaps.length - 1; i += 2) {
       let row = L.DomUtil.create('div', 'single-color-map-row', dropdownInner);
-      let colorMapElement1 = L.DomUtil.create('div', 'single-color-map', row);
-      colorMapElement1.id = guidGenerator();
-      let colorMapElement2 = L.DomUtil.create('div', 'single-color-map', row);
-      let colorMap1 = (chroma.brewer as any)[colorMapKeys[i]];
-      let colorMap2 = (chroma.brewer as any)[colorMapKeys[i+1]];
-
-      colorMapElement1.style.background = this.createGradientString(colorMap1);
-      colorMapElement2.style.background = this.createGradientString(colorMap2);
-      let colorMapWrapper1 = this.createColorMapWrapper(colorMap1, colorMapElement1);
-      let colorMapWrapper2 = this.createColorMapWrapper(colorMap2, colorMapElement2);
-
-      colorMapElement1.addEventListener('click', (event: MouseEvent) => {
-        this.onColorMapClick(colorMapWrapper1);
-      })
-      colorMapElement2.addEventListener('click', (event: MouseEvent) => {
-        this.onColorMapClick(colorMapWrapper2);
-      })
+      let colorMap1 = ColorMaps[i];
+      let colorMap2 = ColorMaps[i+1];
+      this.createColorMapElement(row, colorMap1);
+      this.createColorMapElement(row, colorMap2);
     }
+
+  }
+
+  private createColorMapElement(row: HTMLElement, colorMap: string[]) {
+    let element = L.DomUtil.create('div', 'single-color-map', row);
+    element.id = guidGenerator();
+    element.style.background = this.createGradientString(colorMap);
+    let wrapper = this.createColorMapWrapper(colorMap, element);
+    element.addEventListener('click', (event: MouseEvent) => {
+      this.onColorMapClick(wrapper);
+    })
+    return element;
   }
 
   private guidGenerator() {
@@ -282,10 +291,10 @@ export class LeafletGlVectorLayerControlWrapper extends L.Control {
     L.DomEvent.disableClickPropagation(this.colorPickerContainer);
     L.DomEvent.disableClickPropagation(this.toggleButton);
     L.DomEvent.disableClickPropagation(this.colorMapDropdownToggle);
-
-    this.infoButton.addEventListener('click', (event: MouseEvent) => {
-      this.toggleInfoContainer();
-    })
+    //
+    // this.infoButton.addEventListener('click', (event: MouseEvent) => {
+    //   this.toggleInfoContainer();
+    // })
 
     this.resetButton.addEventListener('click', (event: MouseEvent) => {
       this.hideDialogs();
@@ -305,7 +314,7 @@ export class LeafletGlVectorLayerControlWrapper extends L.Control {
       this.hideDialogs();
       this.toggleButton.classList.toggle('toggled');
       this.colorMapDropdownToggle.classList.toggle('toggled');
-      this.infoButton.classList.toggle('toggled');
+      // this.infoButton.classList.toggle('toggled');
       this.resetButton.classList.toggle('toggled');
       this.controlWrapperInnerContainer.classList.toggle('show');
     })
@@ -327,14 +336,14 @@ export class LeafletGlVectorLayerControlWrapper extends L.Control {
     });
   }
 
-  private toggleInfoContainer() {
-      this.infoContainer.classList.toggle('show');
-      let parentLeft = this.infoButton.offsetLeft;
-      let parentTop = this.infoButton.offsetTop;
-      let dialogBounds = this.infoContainer?.getBoundingClientRect() as DOMRect;
-      this.infoContainer!.style.left = (parentLeft - dialogBounds.width) + 'px';
-      this.infoContainer!.style.top = parentTop - dialogBounds.height + 'px';
-  }
+  // private toggleInfoContainer() {
+  //     this.infoContainer.classList.toggle('show');
+  //     let parentLeft = this.infoButton.offsetLeft;
+  //     let parentTop = this.infoButton.offsetTop;
+  //     let dialogBounds = this.infoContainer?.getBoundingClientRect() as DOMRect;
+  //     this.infoContainer!.style.left = (parentLeft - dialogBounds.width) + 'px';
+  //     this.infoContainer!.style.top = parentTop - dialogBounds.height + 'px';
+  // }
 
   private showColorMapDropdown() {
       this.colorMapDropdownContainer!.classList.toggle('show');
@@ -356,7 +365,7 @@ export class LeafletGlVectorLayerControlWrapper extends L.Control {
   private hideDialogs() {
     this.colorMapDropdownContainer.classList.remove('show');
     this.colorPickerContainer.classList.remove('show');
-    this.infoContainer.classList.remove('show');
+    // this.infoContainer.classList.remove('show');
   }
 
   private reset() {
