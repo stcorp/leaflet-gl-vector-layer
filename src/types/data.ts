@@ -1,5 +1,5 @@
 export interface IData {
-  latitudes: Float64Array;
-  longitudes: Float64Array;
-  values: Float64Array;
+  latitudes: Float32Array;
+  longitudes: Float32Array;
+  values: Float32Array;
 }

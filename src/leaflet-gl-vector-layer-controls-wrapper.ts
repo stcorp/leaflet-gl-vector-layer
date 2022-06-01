@@ -1,4 +1,3 @@
-import chroma from 'chroma-js';
 import * as L from 'leaflet';
 import iro from '@jaames/iro';
 import {LeafletGlVectorLayerControl} from "./leaflet-gl-vector-layer-controls";
@@ -156,6 +155,7 @@ export class LeafletGlVectorLayerControlWrapper extends L.Control {
     this.tabs.push(tab);
 
     this.tabs[0].classList.add('active');
+
     if(!this.selectedControl) {
       this.selectControl(control);
     } else {
@@ -216,16 +216,7 @@ export class LeafletGlVectorLayerControlWrapper extends L.Control {
     this.colorMapDropdownToggle = L.DomUtil.create('div', 'toggle-button color-map-dropdown-toggle', this.controlWrapperOuterContainer);
     this.colorMapDropdownToggleInner = L.DomUtil.create('div', 'toggle-button-inner color-map-dropdown-toggle-inner', this.colorMapDropdownToggle);
     let dropdownInner = L.DomUtil.create('div', 'color-map-dropdown-container-inner', this.colorMapDropdownContainer);
-    let colorMapKeys = Object.keys(chroma.brewer).slice(0, 14);
-    let colorMaps = [
-      chroma.brewer.Spectral,
-      chroma.brewer.Paired,
-      chroma.brewer.Set1,
-      chroma.brewer.Set2,
-      chroma.brewer.Set3,
-      chroma.brewer.Set3,
-    ]
-    console.log(chroma.brewer);
+
     for(let i = 0; i < ColorMaps.length - 1; i += 2) {
       let row = L.DomUtil.create('div', 'single-color-map-row', dropdownInner);
       let colorMap1 = ColorMaps[i];
@@ -236,7 +227,7 @@ export class LeafletGlVectorLayerControlWrapper extends L.Control {
 
   }
 
-  private createColorMapElement(row: HTMLElement, colorMap: string[]) {
+  private createColorMapElement(row: HTMLElement, colorMap: [number, number, number, number, number][]) {
     let element = L.DomUtil.create('div', 'single-color-map', row);
     element.id = guidGenerator();
     element.style.background = this.createGradientString(colorMap);
@@ -247,29 +238,23 @@ export class LeafletGlVectorLayerControlWrapper extends L.Control {
     return element;
   }
 
-  private guidGenerator() {
-    var S4 = function() {
-      return (((1+Math.random())*0x10000)|0).toString(16).substring(1);
-    };
-    return (S4()+S4()+"-"+S4()+"-"+S4()+"-"+S4()+"-"+S4()+S4()+S4());
-  }
-
-  private createGradientString(colors: string[]) {
+  private createGradientString(colors: [number, number, number, number, number][]) {
     let linearGradientString = 'linear-gradient(to right';
     for(let i = 0; i < colors.length; i++) {
-      let suffix = `, ${colors[i]} ${(i/colors.length) * 100}%`
+      let rgba = colors[i][1] + ',' + colors[i][2] + ',' + colors[i][3] + ',' + colors[i][4];
+      let suffix = `, rgba(${rgba}) ${colors[i][0] * 100}%`
       linearGradientString += suffix;
     }
     return linearGradientString;
   }
 
-  private createColorMapWrapper(colors: string[], colorMapElement: HTMLElement) {
+  private createColorMapWrapper(colors: number[][], colorMapElement: HTMLElement) {
     let colorWrappers: IPredefinedColorWrapper[] = [];
+    let skip = colors.length
     for(let i = 0; i < colors.length; i++) {
-      let color = chroma(colors[i]).rgba();
       let colorWrapper: IPredefinedColorWrapper = {
-        value: i / colors.length,
-        color
+        value: colors[i][0],
+        color: colors[i].slice(1, colors[i].length)
       }
       colorWrappers.push(colorWrapper);
     }

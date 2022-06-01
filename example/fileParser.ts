@@ -21,36 +21,36 @@ export async function FileParser(mode: 'swath'|'grid'|'points'|'antimeridian') {
     let values: number[] = await outputPointFileAsArray(point_values) as number[]
 
     return {
-      latitudes: new Float64Array(latitudes),
-      longitudes: new Float64Array(longitudes),
-      values: new Float64Array(values.flat())
+      latitudes: new Float32Array(latitudes),
+      longitudes: new Float32Array(longitudes),
+      values: new Float32Array(values.flat())
     }
   } else if (mode === 'grid') {
     let latitudes: number[] = await outputFileAsArray(raster_latitudes) as number[]
     let longitudes: number[] = await outputFileAsArray(raster_longitudes) as number[]
     let values: number[][] = await output2DFileAsArray(raster_values) as number[][]
     return {
-      latitudes: new Float64Array(latitudes),
-      longitudes: new Float64Array(longitudes),
-      values: new Float64Array(values.flat()),
+      latitudes: new Float32Array(latitudes),
+      longitudes: new Float32Array(longitudes),
+      values: new Float32Array(values.flat()),
     }
   } else if (mode === 'swath') {
     let latitudes: number[][] = await output2DFileAsArray(bounds_latitudes) as number[][]
     let longitudes: number[][] = await output2DFileAsArray(bounds_longitudes) as number[][]
     let values: number[] = await outputValuesForBounds(bounds_values) as number[]
     return {
-      latitudes: new Float64Array(latitudes.flat()),
-      longitudes: new Float64Array(longitudes.flat()),
-      values: new Float64Array(values),
+      latitudes: new Float32Array(latitudes.flat()),
+      longitudes: new Float32Array(longitudes.flat()),
+      values: new Float32Array(values),
     }
   } else if (mode === 'antimeridian') {
     let latitudes: number[][] = await outputAntimeridian2DFileAsArray(antimeridian_latitudes) as number[][]
     let longitudes: number[][] = await outputAntimeridian2DFileAsArray(antimeridian_longitudes) as number[][]
     let values: number[] = await outputAntimeridianValuesForBounds(antimeridian_values) as number[]
     return {
-      latitudes: new Float64Array(latitudes.flat()),
-      longitudes: new Float64Array(longitudes.flat()),
-      values: new Float64Array(values),
+      latitudes: new Float32Array(latitudes.flat()),
+      longitudes: new Float32Array(longitudes.flat()),
+      values: new Float32Array(values),
     }
   }
 }

@@ -1,18 +1,26 @@
-import chroma from 'chroma-js';
+import {getColor} from "./color-map-names";
 
+let s5pPalColorMaps = [
+  [[0, 0, 0, 1], [0, 64, 129, 1], [0, 108, 217, 1], [0, 184, 255, 1], [0, 230, 255, 1], [90, 255, 166, 1], [229, 255, 26, 1], [255, 186, 0, 1], [255, 0, 0, 1]],
+  [[232, 236, 251, 1], [143, 86, 159, 1], [78, 149, 189, 1], [115, 181, 131, 1], [201, 184, 67, 1], [229, 115, 48, 1], [206, 34, 33, 1], [111, 29, 22, 1], ],
+]
 export const ColorMaps = [
-  ['#000000', '#004081', '#006cd9', '#00b8ff', '#00e6ff', '#5affa6', '#e5ff1a', '#ffba00', '#ff0000'],
-  ['#e8ecfb', '#8f569f', '#4e95bd', '#73b583', '#c9b843', '#e57330', '#ce2221', '#6f1d16'],
-  ['#474700', '#666600', '#001a66', '#001247', '#660000'],
-  ['#B34442', '#FF5552', '#45FFFC', '#B89E69', '#FFDD99'],
-  ['#1974A6', '#345C73', '#0BD9B3', '#DE5642', '#A61921'],
-  ['#A65B19', '#735134', '#D9300B', '#01E050', '#19A622'],
-  ['#A68F19', '#736934', '#D98E0B', '#00A4E0', '#19A5A6'],
-  chroma.brewer.Set1,
-  chroma.brewer.YlOrRd,
-  chroma.brewer.Blues,
-  chroma.brewer.BuPu,
-  chroma.brewer.Oranges,
-  chroma.brewer.PuRd,
-  chroma.brewer.RdYlGn
+  getColor('gist_rainbow'),
+  getColor('gist_stern'),
+  getColor('gnuplot'),
+  getColor('jet'),
+  getColor('ocean'),
+  getColor('magma'),
+  getColor('Blues'),
+  getColor('BrBG'),
+  getColor('OrRd'),
+  getColor('GnBu'),
+  getColor('RdYlGn'),
+  getColor('Spectral'),
+  s5pPalColorMaps[0].map((color, index) => {
+    return [index/(s5pPalColorMaps[0].length - 1), ...color]
+  }),
+  s5pPalColorMaps[1].map((color, index) => {
+    return [index/(s5pPalColorMaps[0].length - 1), ...color]
+  })
 ]

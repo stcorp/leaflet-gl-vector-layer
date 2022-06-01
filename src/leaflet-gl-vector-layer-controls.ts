@@ -1,14 +1,12 @@
 import chroma from 'chroma-js';
 import * as L from 'leaflet';
 import { Subject } from 'rxjs';
-import iro from '@jaames/iro';
 
 import {LeafletGlVectorLayer} from "./leaflet-gl-vector-layer";
 import {IColorSlider, IColorWrapper} from "./types/color-slider";
 import { guidGenerator } from './helpers/guid-generator';
 import {IData} from "./types/data";
-import {LeafletGlVectorLayerWrapper} from "./leaflet-gl-vector-layer-wrapper";
-import {LeafletGlVectorLayerControlWrapper} from "./leaflet-gl-vector-layer-controls-wrapper";
+import {getColor, partial} from "./helpers/color-map-names";
 
 
 
@@ -59,13 +57,7 @@ export class LeafletGlVectorLayerControl {
 
   constructor(public layer: LeafletGlVectorLayer) {
     this.id = guidGenerator();
-    if(layer.options.leafletGlVectorLayerOptions.data.points) {
-      this.data = layer.options.leafletGlVectorLayerOptions.data.points;
-    } else if (layer.options.leafletGlVectorLayerOptions.data.swath) {
-      this.data = layer.options.leafletGlVectorLayerOptions.data.swath;
-    } else if (layer.options.leafletGlVectorLayerOptions.data.grid) {
-      this.data = layer.options.leafletGlVectorLayerOptions.data.grid;
-    }
+    this.data = layer.options.leafletGlVectorLayerOptions.data;
   }
 
   public initialize(map: L.Map, mapContainer: HTMLElement) {
@@ -116,14 +108,55 @@ export class LeafletGlVectorLayerControl {
 
   public initColorWrappers() {
     if(!this.colorWrappers.length) {
-      this.createColorWrapper(0, [255, 255, 255, 1], 0)
-      this.createColorWrapper(1, [0, 0, 0, 1], 1)
+      this.handleDefaultColorMap();
     }
     this.updateGradient();
     this.subjects.gradient.next(this.gradient);
   }
 
-  private createColorWrapper(value: number, color: number[], index: number): IColorWrapper {
+  private handleDefaultColorMap() {
+    let defaultColorMap = this.layer.options.leafletGlVectorLayerOptions.colormap;
+    if(defaultColorMap) {
+      if(Array.isArray(defaultColorMap)) {
+        for(let i = 0; i < defaultColorMap.length; i++) {
+          let rgbaColor = this.getRgbaColorFromNormalizedColor(defaultColorMap[i]);
+          this.createColorWrapper(rgbaColor[0], rgbaColor.slice(1, rgbaColor.length), i)
+        }
+      } else if(typeof defaultColorMap === 'string') {
+        try {
+          let defaultColors = getColor(defaultColorMap);
+          for(let i = 0; i < defaultColors.length; i++) {
+            this.createColorWrapper(defaultColors[i][0], defaultColors[i].slice(1, defaultColors[i].length), i)
+          }
+        } catch(e) {
+          throw(e);
+        }
+      } else {
+        throw('Invalid colormap format');
+      }
+    } else {
+      this.createColorWrapper(0, [255, 255, 255, 1], 0)
+      this.createColorWrapper(1, [0, 0, 0, 1], 1)
+    }
+
+  }
+
+  // Normalized color is in format (x, r, g, b, a) where x is the position of the color in the gradient, and
+  // r, g, b, a are the rgba values of the color in the range 0..1
+  private getRgbaColorFromNormalizedColor(normalizedColor: number[]) {
+    return [
+      normalizedColor[0],
+      Math.round(normalizedColor[1] * 255),
+      Math.round(normalizedColor[2] * 255),
+      Math.round(normalizedColor[3] * 255),
+      normalizedColor[4]
+    ]
+  }
+
+  private createColorWrapper(value: number|string, color: number[], index: number): IColorWrapper {
+    if(typeof value === 'string') {
+      value = parseFloat(value);
+    }
     let newColorWrapper: IColorWrapper = {
       color,
       value
@@ -331,12 +364,10 @@ export class LeafletGlVectorLayerControl {
     if(!this.gradientElement || !this.gradient) {
       return;
     }
-    let gradientStopCount = 20;
-
     let linearGradientString = 'linear-gradient(to right';
-    for(let i = 0; i < gradientStopCount; i++) {
-      let rgba = this.gradient(i/gradientStopCount).rgba();
-      let suffix = `, rgba(${rgba}) ${i/20 * 100}%`
+    for(let i = 0; i < this.colorWrappers.length ; i++) {
+      let rgba = this.colorWrappers[i].color;
+      let suffix = `, rgba(${rgba}) ${this.colorWrappers[i].value * 100}%`
       linearGradientString += suffix;
     }
     this.gradientElement.style.setProperty("--gradient-element-background", linearGradientString);

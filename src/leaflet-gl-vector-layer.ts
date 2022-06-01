@@ -28,7 +28,7 @@ export class LeafletGlVectorLayer extends L.GridLayer {
     public renderer: SwathRenderer|GridRenderer|PointsRenderer|undefined;
     private _paneName: string = 'overlayPane';
     public dataHelper: DataHelper;
-    public options: any;
+    public options: ExtendedOptions;
     public wrapper: LeafletGlVectorLayerWrapper;
     public control: LeafletGlVectorLayerControl;
     public _leaflet_id: string;
@@ -68,7 +68,7 @@ export class LeafletGlVectorLayer extends L.GridLayer {
         this.canvas.height = map.getSize().y;
         this.canvas.className = `leaflet-zoom-${this.isAnimated() ? "animated" : "hide"}`;
         if(this.options.opacity) {
-            this.canvas.style.opacity = this.options.opacity;
+            this.canvas.style.opacity = (this.options.opacity || 1) + '';
         }
         let RendererMap: {
             [x: string]: typeof SwathRenderer | typeof GridRenderer | typeof PointsRenderer

@@ -6,8 +6,8 @@ export default defineConfig({
     lib: {
       entry: './src/index.ts',
       name: 'leafletGlVectorLayer',
-      formats: ['es'],
-      fileName: (format) => `index.js`
+      formats: ['es', 'umd'],
+      fileName: (format) => `index.${format}.js`
     },
     rollupOptions: {
       external: ['leaflet'],
@@ -17,13 +17,6 @@ export default defineConfig({
             return 'index.css';
           }
           return assetInfo.name as string;
-        },
-        entryFileNames: (fileInfo) => {
-          if(fileInfo.name === 'index') {
-            return 'index.js'
-          } else {
-            return fileInfo.name;
-          }
         },
         globals: {
           'leaflet': 'L'

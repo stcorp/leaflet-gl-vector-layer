@@ -1,7 +1,7 @@
 import {LeafletGlVectorLayer} from "../leaflet-gl-vector-layer";
 
 export class DataHelper {
-  private sortedData: Float64Array;
+  private sortedData: Float32Array;
   public minValue: number;
   public currentMinValue: number;
   public currentMaxValue: number;
