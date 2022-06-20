@@ -21,22 +21,16 @@ export abstract class BaseRenderer {
 
     public vertices: number[] = [];
     public numPoints: number = 0;
-    public canvas: any;
     public glContextWrappers: GlCollectionWrapper[] = [];
-    public gl: WebGLRenderingContext | WebGL2RenderingContext;
-    public program: any;
     public mapMatrix: MapMatrix;
-    public matrix: any;
     public abstract map: Map;
     public customColorMap: chroma.Scale;
-    private vertBuffer: WebGLBuffer | null;
     private fragmentShader: WebGLShader;
     private vertexShader: WebGLShader;
     protected vertexValues: number[] = [];
     protected unwrappedGradient: any[][];
     protected colorFidelity: number = 10000;
     protected drawType: GLenum;
-    private pointSizeLoc: any;
     private defaultVertexShader = `    
         uniform mat4 u_matrix;
         uniform float u_pointSize;
