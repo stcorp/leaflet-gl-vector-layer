@@ -7,12 +7,22 @@ import {IPoint} from "./types/point";
 import {DataHelper} from "./helpers/data-helper";
 import {IPolygon, IQuad, ITriangle} from "./types/polygon";
 
+export interface GlCollectionWrapper {
+    gl: WebGLRenderingContext;
+    program: WebGLProgram;
+    canvas: HTMLCanvasElement;
+    matrix: WebGLUniformLocation;
+    pointSizeLoc: WebGLUniformLocation;
+    vertBuffer: WebGLBuffer;
+    offsetMultiplier: number;
+}
 
 export abstract class BaseRenderer {
 
     public vertices: number[] = [];
     public numPoints: number = 0;
     public canvas: any;
+    public glContextWrappers: GlCollectionWrapper[] = [];
     public gl: WebGLRenderingContext | WebGL2RenderingContext;
     public program: any;
     public mapMatrix: MapMatrix;
@@ -58,42 +68,81 @@ export abstract class BaseRenderer {
         }
     `
 
-    constructor(leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions, canvas: HTMLCanvasElement, map: Map, private dataHelper: DataHelper) {
+    constructor(leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions, canvases: HTMLCanvasElement[], map: Map, private dataHelper: DataHelper) {
         this.unwrappedGradient = [];
-        this.canvas = canvas;
-        this.gl = this.canvas.getContext('webgl', { antialias: true });
         this.mapMatrix = new MapMatrix();
-        this.createShaders();
-        this.program = this.gl.createProgram();
-        this.vertBuffer = this.gl.createBuffer();
-
-        this.gl.attachShader(this.program, this.vertexShader);
-        this.gl.attachShader(this.program, this.fragmentShader);
-        this.gl.linkProgram(this.program);
-        this.gl.useProgram(this.program);
-        this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
-        this.gl.enable(this.gl.BLEND);
-        this.matrix = this.gl.getUniformLocation(this.program, "u_matrix");
-        this.pointSizeLoc = this.gl.getUniformLocation(this.program, "u_pointSize");
-        this.mapMatrix.setSize(this.canvas.width, this.canvas.height);
-        this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-        this.gl.uniformMatrix4fv(this.matrix, false, this.mapMatrix.array);
-        this.gl.uniform1f(this.pointSizeLoc, leafletGlVectorLayerOptions.pointsize ?? 4.0);
+        for(let [index, canvas] of canvases.entries()) {
+            let offset;
+            if(index === 0) {
+                offset = -2;
+            } else if (index === 1) {
+                offset = -1;
+            } else if (index === 2){
+                offset = 0;
+            } else if (index === 3) {
+                offset = 1;
+            } else {
+                offset = 2;
+            }
+            this.createGlContext(canvas, leafletGlVectorLayerOptions, offset);
+        }
     }
 
-    private createShaders() {
-        this.vertexShader = this.gl.createShader(this.gl.VERTEX_SHADER) as WebGLShader;
-        this.gl.shaderSource(this.vertexShader, this.defaultVertexShader as string);
-        this.gl.compileShader(this.vertexShader);
+    private createGlContext(canvas: HTMLCanvasElement, leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions, offsetMultiplier: number) {
 
-        this.fragmentShader = this.gl.createShader(this.gl.FRAGMENT_SHADER) as WebGLShader;
-        this.gl.shaderSource(this.fragmentShader, this.defaultFragmentShader as string);
-        this.gl.compileShader(this.fragmentShader);
+        let gl = canvas.getContext('webgl', { antialias: true, preserveDrawingBuffer: true });
+        if(!gl) {
+            return;
+        }
+        this.createShaders(gl);
+        let program = gl.createProgram();
+        let vertBuffer = gl.createBuffer();
 
-        if (!this.gl.getShaderParameter(this.fragmentShader, this.gl.COMPILE_STATUS)) {
+        if(!program || !vertBuffer) {
+            return;
+        }
+        gl.attachShader(program, this.vertexShader);
+        gl.attachShader(program, this.fragmentShader);
+        gl.linkProgram(program);
+        gl.useProgram(program);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.enable(gl.BLEND);
+        let matrix = gl.getUniformLocation(program, "u_matrix");
+        if(!matrix) {
+            return;
+        }
+        let pointSizeLoc = gl.getUniformLocation(program, "u_pointSize");
+        if(!pointSizeLoc) {
+            return;
+        }
+        this.mapMatrix.setSize(canvas.width, canvas.height);
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.uniformMatrix4fv(matrix, false, this.mapMatrix.array);
+        gl.uniform1f(pointSizeLoc, leafletGlVectorLayerOptions.pointsize ?? 4.0);
+        this.glContextWrappers.push({
+            gl,
+            program,
+            canvas,
+            matrix,
+            pointSizeLoc,
+            vertBuffer,
+            offsetMultiplier
+        })
+    }
+
+    private createShaders(gl: WebGLRenderingContext) {
+        this.vertexShader = gl.createShader(gl.VERTEX_SHADER) as WebGLShader;
+        gl.shaderSource(this.vertexShader, this.defaultVertexShader as string);
+        gl.compileShader(this.vertexShader);
+
+        this.fragmentShader = gl.createShader(gl.FRAGMENT_SHADER) as WebGLShader;
+        gl.shaderSource(this.fragmentShader, this.defaultFragmentShader as string);
+        gl.compileShader(this.fragmentShader);
+
+        if (!gl.getShaderParameter(this.fragmentShader, gl.COMPILE_STATUS)) {
             throw('Fragment shader is broken');
         }
-        if (!this.gl.getShaderParameter(this.vertexShader, this.gl.COMPILE_STATUS)) {
+        if (!gl.getShaderParameter(this.vertexShader, gl.COMPILE_STATUS)) {
             throw('Vertex shader is broken');
         }
     }
@@ -125,21 +174,22 @@ export abstract class BaseRenderer {
             this.vertices[index + 3] = color[3];
         }
         this.updateBuffers();
-        this.render();
     }
 
     public bindBuffers() {
-        let colorLoc = this.gl.getAttribLocation(this.program, "a_color");
-        var vertArray = new Float32Array(this.vertices);
-        var fsize = vertArray.BYTES_PER_ELEMENT;
+        for(let glContextWrapper of this.glContextWrappers) {
+            let colorLoc = glContextWrapper.gl.getAttribLocation(glContextWrapper.program, "a_color");
+            var vertArray = new Float32Array(this.vertices);
+            var fsize = vertArray.BYTES_PER_ELEMENT;
 
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertBuffer);
-        this.gl.bufferData(this.gl.ARRAY_BUFFER, vertArray, this.gl.STATIC_DRAW);
-        let vertLoc = this.gl.getAttribLocation(this.program, "a_vertex");
-        this.gl.vertexAttribPointer(vertLoc, 2, this.gl.FLOAT, false,4*6,0);
-        this.gl.enableVertexAttribArray(vertLoc);
-        this.gl.vertexAttribPointer(colorLoc, 4, this.gl.FLOAT, false, fsize*6, fsize*2);
-        this.gl.enableVertexAttribArray(colorLoc);
+            glContextWrapper.gl.bindBuffer(glContextWrapper.gl.ARRAY_BUFFER, glContextWrapper.vertBuffer);
+            glContextWrapper.gl.bufferData(glContextWrapper.gl.ARRAY_BUFFER, vertArray, glContextWrapper.gl.STATIC_DRAW);
+            let vertLoc = glContextWrapper.gl.getAttribLocation(glContextWrapper.program, "a_vertex");
+            glContextWrapper.gl.vertexAttribPointer(vertLoc, 2, glContextWrapper.gl.FLOAT, false,4*6,0);
+            glContextWrapper.gl.enableVertexAttribArray(vertLoc);
+            glContextWrapper.gl.vertexAttribPointer(colorLoc, 4, glContextWrapper.gl.FLOAT, false, fsize*6, fsize*2);
+            glContextWrapper.gl.enableVertexAttribArray(colorLoc);
+        }
     }
 
     public setCustomColorMap(colorMap: chroma.Scale) {
@@ -147,29 +197,60 @@ export abstract class BaseRenderer {
     }
     public updateBuffers() {
         var vertArray = new Float32Array(this.vertices);
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertBuffer);
-        this.gl.bufferData(this.gl.ARRAY_BUFFER, vertArray, this.gl.STATIC_DRAW);
+        for(let glContextWrapper of this.glContextWrappers) {
+            glContextWrapper.gl.bindBuffer(glContextWrapper.gl.ARRAY_BUFFER, glContextWrapper.vertBuffer);
+            glContextWrapper.gl.bufferData(glContextWrapper.gl.ARRAY_BUFFER, vertArray, glContextWrapper.gl.STATIC_DRAW);
+        }
+
     }
 
-    public render(event?: ICanvasOverlayDrawEvent) {
-        if (!this.gl) return this;
+    public render(event: ICanvasOverlayDrawEvent) {
+        for(let glContextWrapper of this.glContextWrappers) {
+
+        }
+        if (!event.glContextWrapper.gl) return this;
 
         if(event) {
             const scale = Math.pow(2, event.zoom);
             // set base matrix to translate canvas pixel coordinates -> webgl coordinates
             this.mapMatrix
-              .setSize(this.canvas.width, this.canvas.height)
+              .setSize(event.glContextWrapper.canvas.width, event.glContextWrapper.canvas.height)
               .scaleTo(scale)
               .translateTo(-event.offset.x, -event.offset.y);
-
         }
 
-        this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-        this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-        this.gl.uniformMatrix4fv(this.matrix, false, this.mapMatrix.array);
-        this.gl.drawArrays(this.drawType, 0, this.numPoints);
+        event.glContextWrapper.gl.clear(event.glContextWrapper.gl.COLOR_BUFFER_BIT);
+        event.glContextWrapper.gl.viewport(0, 0, event.glContextWrapper.canvas.width, event.glContextWrapper.canvas.height);
+        event.glContextWrapper.gl.uniformMatrix4fv(event.glContextWrapper.matrix, false, this.mapMatrix.array);
+        event.glContextWrapper.gl.drawArrays(this.drawType, 0, this.numPoints);
         return this;
     }
+    //
+    // public renderDuplicateCanvas(event: ICanvasOverlayDrawEvent) {
+    //     if (!this.gl || !event.canvas) {
+    //         return this;
+    //     }
+    //     event.canvas.getContext('2d')!.clearRect(0, 0, event.canvas.width, event.canvas.height);
+    //
+    //
+    //     let duplicateUntil = 900;
+    //     let duplicatedUntil = 180;
+    //     while(duplicatedUntil <= duplicateUntil) {
+    //         let projectedXy = this.map.project([90, duplicatedUntil], this.map.getZoom());
+    //         event.canvas.getContext('2d')!.drawImage(this.canvas, projectedXy.x, 0);
+    //         duplicatedUntil += 360;
+    //     }
+    //
+    //     duplicateUntil = -900;
+    //     duplicatedUntil = -180;
+    //     while(duplicatedUntil >= duplicateUntil) {
+    //         let projectedXy = this.map.project([90, duplicatedUntil], this.map.getZoom());
+    //         console.log(projectedXy);
+    //         event.canvas.getContext('2d')!.drawImage(this.canvas, projectedXy.x, 0);
+    //         duplicatedUntil -= 360;
+    //     }
+    //     return this;
+    // }
 
     protected buildPixel(xy: IPoint, value: number): [number, number, number, number, number, number] {
         let adjustedValue = (value + this.dataHelper.absoluteCurrentMinValue) / (this.dataHelper.currentMaxValue + this.dataHelper.absoluteCurrentMinValue);

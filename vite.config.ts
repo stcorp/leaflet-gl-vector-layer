@@ -9,7 +9,7 @@ export default defineConfig({
                 ws: true
             }
         },
-        port: 8050
+        port: 8060
     },
     plugins: [
 

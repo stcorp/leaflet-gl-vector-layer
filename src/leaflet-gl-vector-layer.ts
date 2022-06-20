@@ -19,11 +19,13 @@ import {DataHelper} from "./helpers/data-helper";
 import {LeafletGlVectorLayerWrapper} from "./leaflet-gl-vector-layer-wrapper";
 import {guidGenerator} from "./helpers/guid-generator";
 import {LeafletGlVectorLayerOptions} from "./types/leaflet-gl-vector-layer-options";
+// import throttle from 'lodash/throttle';
+
 interface ExtendedOptions extends L.GridLayerOptions {
     leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions
 }
 export class LeafletGlVectorLayer extends L.GridLayer {
-    public canvas: HTMLCanvasElement;
+    public canvases: HTMLCanvasElement[] = [];
     public _map: any;
     public renderer: SwathRenderer|GridRenderer|PointsRenderer|undefined;
     private _paneName: string = 'overlayPane';
@@ -42,7 +44,9 @@ export class LeafletGlVectorLayer extends L.GridLayer {
 
     public onRemove(map: Map) {
         this.wrapper?.cleanUpControlAndLayerData(this);
-        this.canvas?.remove();
+        for(let canvas of this.canvases) {
+            canvas?.remove();
+        }
         this.renderer = undefined;
         this._map.off("moveend", this._reset, this);
         this._map.off("resize", this._resize, this);
@@ -55,20 +59,15 @@ export class LeafletGlVectorLayer extends L.GridLayer {
     }
 
     public addTo(map: L.Map) {
+        this._map = map;
         this.onAdd(map);
         return this;
     }
 
     public onAdd(map: Map) {
         this._map = map;
-        if(!this.canvas) {
-            this.canvas = document.createElement('canvas');
-        }
-        this.canvas.width = map.getSize().x;
-        this.canvas.height = map.getSize().y;
-        this.canvas.className = `leaflet-zoom-${this.isAnimated() ? "animated" : "hide"}`;
-        if(this.options.opacity) {
-            this.canvas.style.opacity = (this.options.opacity || 1) + '';
+        for(let i = 0; i < 5; i++) {
+            this.createCanvas();
         }
         let RendererMap: {
             [x: string]: typeof SwathRenderer | typeof GridRenderer | typeof PointsRenderer
@@ -81,14 +80,15 @@ export class LeafletGlVectorLayer extends L.GridLayer {
             throw new Error(`${this.options.leafletGlVectorLayerOptions.plot_type} is not a valid renderer type`);
         }
         this.dataHelper = new DataHelper(this);
-        this.renderer = new RendererMap[this.options.leafletGlVectorLayerOptions.plot_type](this.options.leafletGlVectorLayerOptions, this.canvas, map, this.dataHelper)
+        this.renderer = new RendererMap[this.options.leafletGlVectorLayerOptions.plot_type](this.options.leafletGlVectorLayerOptions, this.canvases, map, this.dataHelper)
 
 
         if (!map.getPane(this._paneName)) {
             throw new Error("unable to find pane");
         }
-        map.getPane(this._paneName)?.appendChild(this.canvas);
 
+        // let throttledReset = throttle(this._reset, 100);
+        // map.on('move', this._reset, this);
         map.on("moveend", this._reset, this);
         map.on("resize", this._resize, this);
 
@@ -110,6 +110,26 @@ export class LeafletGlVectorLayer extends L.GridLayer {
             next: this.updateValues.bind(this)
         })
         return this;
+    }
+
+    private createCanvas() {
+        let canvas = document.createElement('canvas');
+        canvas.width = this._map.getSize().x;
+        canvas.height = this._map.getSize().y;
+        canvas.className = `leaflet-zoom-${this.isAnimated() ? "animated" : "hide"}`;
+        if(this.options.opacity) {
+            canvas.style.opacity = (this.options.opacity || 1) + '';
+        }
+        if (!this._map.getPane(this._paneName)) {
+            throw new Error("unable to find pane");
+        }
+        this._map.getPane(this._paneName)?.appendChild(canvas);
+        // this.createDuplicateCanvas();
+        // this.createDuplicateWebGlCanvas();
+        this.canvases.push(canvas);
+
+
+        return canvas;
     }
 
     private updateColors(gradient: chroma.Scale|null|undefined): void {
@@ -141,16 +161,23 @@ export class LeafletGlVectorLayer extends L.GridLayer {
     }
 
     private _resize(resizeEvent: ResizeEvent): void {
-        if (this.canvas) {
-            this.canvas.width = resizeEvent.newSize.x;
-            this.canvas.height = resizeEvent.newSize.y;
+        if (this.canvases.length && resizeEvent) {
+            for(let canvas of this.canvases) {
+                canvas.width = resizeEvent.newSize.x;
+                canvas.height = resizeEvent.newSize.y;
+            }
+
         }
     }
 
     private _reset(): void {
-        if (this.canvas) {
+        if (this.canvases.length) {
             const topLeft = this._map.containerPointToLayerPoint([0, 0]);
-            DomUtil.setPosition(this.canvas, topLeft);
+            for(let canvas of this.canvases) {
+                DomUtil.setPosition(canvas, topLeft);
+            }
+            // DomUtil.setPosition(this.duplicateCanvas, topLeft);
+            // DomUtil.setPosition(this.duplicateWebGlCanvas, topLeft);
         }
         this._redraw();
     }
@@ -162,43 +189,81 @@ export class LeafletGlVectorLayer extends L.GridLayer {
           (size.x * 180) / (20037508.34 * (bounds.getEast() - bounds.getWest())); // resolution = 1/zoomScale
         const zoom = this._map.getZoom();
         const topLeft = new LatLng(bounds.getNorth(), bounds.getWest());
-        const offset = this._unclampedProject(topLeft, 0);
-        if (this.canvas && this.renderer) {
-            this.renderer.render({
-                bounds,
-                canvas: this.canvas,
-                offset,
-                scale: Math.pow(2, zoom),
-                size,
-                zoomScale,
-                zoom,
-            })
+
+        if (this.renderer) {
+            for(let glContextWrapper of this.renderer.glContextWrappers) {
+                let adjustedTopLeft = new LatLng(topLeft.lat, topLeft.lng + (360 * glContextWrapper.offsetMultiplier))
+                const offset = this._unclampedProject(adjustedTopLeft, 0);
+                while(offset.x > 256) {
+                    offset.x = offset.x - 256*5;
+                }
+                while(offset.x < -this._map.getSize().x) {
+                    offset.x = offset.x + 256*5
+                }
+                this.renderer.render({
+                    bounds,
+                    offset,
+                    scale: Math.pow(2, zoom),
+                    size,
+                    zoomScale,
+                    zoom,
+                    glContextWrapper
+                })
+            }
+
+            // let adjustedTopLeft = new LatLng(
+            //     topLeft.lat,
+            //     topLeft.lng + 360
+            // )
+            // const offsetAdjusted = this._unclampedProject(adjustedTopLeft, 0);
+            // this.renderer.renderDuplicateWebGlCanvas({
+            //     bounds,
+            //     canvas: this.duplicateWebGlCanvas,
+            //     offset: offsetAdjusted,
+            //     scale: Math.pow(2, zoom),
+            //     size,
+            //     zoomScale,
+            //     zoom,
+            // })
+            // this.renderer.renderDuplicateCanvas({
+            //     bounds,
+            //     canvas: this.duplicateCanvas,
+            //     offset,
+            //     scale: Math.pow(2, zoom),
+            //     size,
+            //     zoomScale,
+            //     zoom,
+            // })
         }
     }
 
 
     private _animateZoom(e: ZoomAnimEvent): void {
-        const { _map, canvas } = this;
+        const { _map } = this;
         const scale = _map.getZoomScale(e.zoom, _map.getZoom());
         const offset = this._unclampedLatLngBoundsToNewLayerBounds(
           _map.getBounds(),
           e.zoom,
           e.center
         ).min;
-        if (canvas && offset) {
-            DomUtil.setTransform(canvas, offset, scale);
+        if (this.canvases.length && offset) {
+            for(let canvas of this.canvases) {
+                DomUtil.setTransform(canvas, offset, scale);
+            }
         }
     }
 
     private _animateZoomNoLayer(e: ZoomAnimEvent): void {
-        const { _map, canvas } = this;
-        if (canvas) {
+        const { _map } = this;
+        if (this.canvases.length) {
             const scale = _map.getZoomScale(e.zoom, _map.getZoom());
             const offset = _map
               ._getCenterOffset(e.center)
               ._multiplyBy(-scale)
               .subtract(_map._getMapPanePos());
-            DomUtil.setTransform(canvas, offset, scale);
+            for(let canvas of this.canvases) {
+                DomUtil.setTransform(canvas, offset, scale);
+            }
         }
     }
 

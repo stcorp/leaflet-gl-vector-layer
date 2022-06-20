@@ -9,12 +9,12 @@ export class SwathRenderer extends BaseRenderer {
     public map: L.Map;
     private index: number;
 
-    constructor(leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions, canvas: HTMLCanvasElement, map: L.Map, dataHelper: DataHelper) {
-        super(leafletGlVectorLayerOptions, canvas, map, dataHelper);
+    constructor(leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions, canvases: HTMLCanvasElement[], map: L.Map, dataHelper: DataHelper) {
+        super(leafletGlVectorLayerOptions, canvases, map, dataHelper);
         this.data = leafletGlVectorLayerOptions.data as IData;
         this.map = map;
         this.index = 0;
-        this.drawType = this.gl.TRIANGLES;
+        this.drawType = WebGLRenderingContext.TRIANGLES;
     }
 
     public processData(callback: () => void) {

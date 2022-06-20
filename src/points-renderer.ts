@@ -8,11 +8,11 @@ export class PointsRenderer extends BaseRenderer {
     private data: IData;
     public map: Map;
 
-    constructor(leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions, canvas: HTMLCanvasElement, map: Map, dataHelper: DataHelper) {
-        super(leafletGlVectorLayerOptions, canvas, map, dataHelper);
+    constructor(leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions, canvases: HTMLCanvasElement[], map: Map, dataHelper: DataHelper) {
+        super(leafletGlVectorLayerOptions, canvases, map, dataHelper);
         this.map = map;
         this.data = leafletGlVectorLayerOptions.data as IData;
-        this.drawType = this.gl.POINTS;
+        this.drawType = WebGLRenderingContext.POINTS;
 
     }
 

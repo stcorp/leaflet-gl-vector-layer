@@ -10,11 +10,11 @@ export class GridRenderer extends BaseRenderer {
     private data: IData;
     public map: Map;
 
-    constructor(leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions, canvas: HTMLCanvasElement, map: Map, dataHelper: DataHelper) {
-        super(leafletGlVectorLayerOptions, canvas, map, dataHelper);
+    constructor(leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions, canvases: HTMLCanvasElement[], map: Map, dataHelper: DataHelper) {
+        super(leafletGlVectorLayerOptions, canvases, map, dataHelper);
         this.map = map;
         this.data = leafletGlVectorLayerOptions.data as IData;
-        this.drawType = this.gl.TRIANGLES;
+        this.drawType = WebGLRenderingContext.TRIANGLES;
     }
 
     public processData(callback: () => void) {
