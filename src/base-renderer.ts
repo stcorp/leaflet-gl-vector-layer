@@ -199,9 +199,6 @@ export abstract class BaseRenderer {
     }
 
     public render(event: ICanvasOverlayDrawEvent) {
-        for(let glContextWrapper of this.glContextWrappers) {
-
-        }
         if (!event.glContextWrapper.gl) return this;
 
         if(event) {
