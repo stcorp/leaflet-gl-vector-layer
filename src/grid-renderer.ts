@@ -20,7 +20,10 @@ export class GridRenderer extends BaseRenderer {
     public processData(callback: () => void) {
         super.processData();
         this.vertices = [];
-
+        let cellOffset = 0;
+        if(this.data.longitudes.length >= 2) {
+            cellOffset = (this.data.longitudes[1] - this.data.longitudes[0]);
+        }
         for(let latIndex = 0; latIndex < this.data.latitudes.length - 1; latIndex++) {
             for (let lonIndex = 0; lonIndex < this.data.longitudes.length - 1; lonIndex++) {
                 let index = latIndex*this.data.longitudes.length + lonIndex;
@@ -32,10 +35,10 @@ export class GridRenderer extends BaseRenderer {
                 let isAboveAntiMeridian = longitudes.some(longitude => (longitude >= 160))
                 let isCrossAntimeridian = isBelowAntiMeridian && isAboveAntiMeridian;
                 let polygon: IQuad = [
-                    [this.data.latitudes[latIndex], this.data.longitudes[lonIndex]],
-                    [this.data.latitudes[latIndex], this.data.longitudes[lonIndex + 1]],
-                    [this.data.latitudes[latIndex + 1], this.data.longitudes[lonIndex + 1]],
-                    [this.data.latitudes[latIndex + 1], this.data.longitudes[lonIndex]]
+                    [this.data.latitudes[latIndex], this.data.longitudes[lonIndex] - cellOffset],
+                    [this.data.latitudes[latIndex], this.data.longitudes[lonIndex + 1] - cellOffset],
+                    [this.data.latitudes[latIndex + 1], this.data.longitudes[lonIndex + 1] - cellOffset],
+                    [this.data.latitudes[latIndex + 1], this.data.longitudes[lonIndex] - cellOffset]
                 ];
                 let value = this.normalizeValue(this.data.values[index]);
                 let triangles: ITriangle[] = [];
@@ -48,7 +51,34 @@ export class GridRenderer extends BaseRenderer {
                 this.addTrianglesToVertices(triangles, value)
             }
         }
+        this.addMissingColumnOfQuads();
         this.numPoints = this.vertices.length / 6;
         callback();
+    }
+
+    private addMissingColumnOfQuads() {
+        for(let latIndex = 0; latIndex < this.data.latitudes.length - 1; latIndex++) {
+            let longitudes = [this.data.longitudes[this.data.longitudes.length - 2], this.data.longitudes[this.data.longitudes.length - 1]];
+            let isBelowAntiMeridian = longitudes.some(longitude => (longitude <= -160));
+            let isAboveAntiMeridian = longitudes.some(longitude => (longitude >= 160))
+            let isCrossAntimeridian = isBelowAntiMeridian && isAboveAntiMeridian;
+            let index = latIndex*this.data.longitudes.length + (this.data.longitudes.length - 1);
+
+            let polygon: IQuad = [
+                [this.data.latitudes[latIndex], this.data.longitudes[this.data.longitudes.length - 2]],
+                [this.data.latitudes[latIndex], this.data.longitudes[this.data.longitudes.length - 1]],
+                [this.data.latitudes[latIndex + 1], this.data.longitudes[this.data.longitudes.length - 1]],
+                [this.data.latitudes[latIndex + 1], this.data.longitudes[this.data.longitudes.length - 2]]
+            ];
+            let value = this.normalizeValue(this.data.values[index]);
+            let triangles: ITriangle[] = [];
+            if(isCrossAntimeridian) {
+                let newPolygons = this.cutPolygon(polygon);
+                triangles = this.createTrianglesFromPolygons(newPolygons);
+            } else {
+                triangles = this.createTrianglesFromQuad(polygon);
+            }
+            this.addTrianglesToVertices(triangles, value)
+        }
     }
 }
