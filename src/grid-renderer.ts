@@ -64,7 +64,9 @@ export class GridRenderer extends BaseRenderer {
             let isAboveAntiMeridian = longitudes.some(longitude => (longitude >= 160))
             let isCrossAntimeridian = isBelowAntiMeridian && isAboveAntiMeridian;
             let index = latIndex*this.data.longitudes.length + (this.data.longitudes.length - 1);
-
+            if(!this.data.values[index] && this.data.values[index] !== 0) {
+                continue;
+            }
             let polygon: IQuad = [
                 [this.data.latitudes[latIndex], this.data.longitudes[this.data.longitudes.length - 2]],
                 [this.data.latitudes[latIndex], this.data.longitudes[this.data.longitudes.length - 1]],
