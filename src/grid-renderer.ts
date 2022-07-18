@@ -5,6 +5,7 @@ import {DataHelper} from "./helpers/data-helper";
 import {IData} from "./types/data";
 import {IQuad, ITriangle} from "./types/polygon";
 
+// Assumes that given latitudes and longitudes are center-points of the polygons.
 export class GridRenderer extends BaseRenderer {
 
     private data: IData;
