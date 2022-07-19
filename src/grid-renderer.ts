@@ -3,7 +3,7 @@ import {LeafletGlVectorLayerOptions} from "./types/leaflet-gl-vector-layer-optio
 import {Map} from "leaflet";
 import {DataHelper} from "./helpers/data-helper";
 import {IData} from "./types/data";
-import {IQuad, ITriangle} from "./types/polygon";
+import {IPolygon, IQuad, ITriangle} from "./types/polygon";
 
 // Assumes that given latitudes and longitudes are center-points of the polygons.
 export class GridRenderer extends BaseRenderer {
@@ -21,67 +21,78 @@ export class GridRenderer extends BaseRenderer {
     public processData(callback: () => void) {
         super.processData();
         this.vertices = [];
-        let cellOffset = 0;
+        let lonCellOffset = 0;
+        let latCellOffset = 0;
         if(this.data.longitudes.length >= 2) {
-            cellOffset = (this.data.longitudes[1] - this.data.longitudes[0]);
+            lonCellOffset = Math.abs((this.data.longitudes[1] - this.data.longitudes[0])) / 2;
         }
-        for(let latIndex = 0; latIndex < this.data.latitudes.length - 1; latIndex++) {
-            for (let lonIndex = 0; lonIndex < this.data.longitudes.length - 1; lonIndex++) {
+        if(this.data.latitudes.length >= 2) {
+            latCellOffset = Math.abs((this.data.latitudes[1] - this.data.latitudes[0])) / 2;
+        }
+        for(let latIndex = 0; latIndex < this.data.latitudes.length; latIndex++) {
+            for (let lonIndex = 0; lonIndex < this.data.longitudes.length; lonIndex++) {
                 let index = latIndex*this.data.longitudes.length + lonIndex;
                 if(!this.data.values[index] && this.data.values[index] !== 0) {
                     continue;
                 }
-                let longitudes = [this.data.longitudes[lonIndex], this.data.longitudes[lonIndex + 1]];
+                let longitudes = [this.data.longitudes[lonIndex] - lonCellOffset, this.data.longitudes[lonIndex] + lonCellOffset];
                 let isBelowAntiMeridian = longitudes.some(longitude => (longitude <= -160));
                 let isAboveAntiMeridian = longitudes.some(longitude => (longitude >= 160))
                 let isCrossAntimeridian = isBelowAntiMeridian && isAboveAntiMeridian;
+                let isAbove180 = longitudes.some(longitude => (longitude > 180));
+                let isBelow180 = longitudes.some(longitude => (longitude < 180));
+
                 let polygon: IQuad = [
-                    [this.data.latitudes[latIndex], this.data.longitudes[lonIndex] - cellOffset],
-                    [this.data.latitudes[latIndex], this.data.longitudes[lonIndex + 1] - cellOffset],
-                    [this.data.latitudes[latIndex + 1], this.data.longitudes[lonIndex + 1] - cellOffset],
-                    [this.data.latitudes[latIndex + 1], this.data.longitudes[lonIndex] - cellOffset]
+                    [this.data.latitudes[latIndex] + latCellOffset, this.data.longitudes[lonIndex] - lonCellOffset],
+                    [this.data.latitudes[latIndex] + latCellOffset, this.data.longitudes[lonIndex] + lonCellOffset],
+                    [this.data.latitudes[latIndex] - latCellOffset, this.data.longitudes[lonIndex] + lonCellOffset],
+                    [this.data.latitudes[latIndex] - latCellOffset, this.data.longitudes[lonIndex] - lonCellOffset]
                 ];
                 let value = this.normalizeValue(this.data.values[index]);
+
                 let triangles: ITriangle[] = [];
-                if(isCrossAntimeridian) {
+                if(isBelow180 && isAbove180) {
+                    let newPolygons = this.cutPolygonOver180Longitude(polygon);
+                    triangles = this.createTrianglesFromPolygons(newPolygons);
+                } else if(isCrossAntimeridian) {
                     let newPolygons = this.cutPolygon(polygon);
                     triangles = this.createTrianglesFromPolygons(newPolygons);
                 } else {
                     triangles = this.createTrianglesFromQuad(polygon);
                 }
+
                 this.addTrianglesToVertices(triangles, value)
             }
         }
-        this.addMissingColumnOfQuads();
         this.numPoints = this.vertices.length / 6;
         callback();
     }
 
-    private addMissingColumnOfQuads() {
-        for(let latIndex = 0; latIndex < this.data.latitudes.length - 1; latIndex++) {
-            let longitudes = [this.data.longitudes[this.data.longitudes.length - 2], this.data.longitudes[this.data.longitudes.length - 1]];
-            let isBelowAntiMeridian = longitudes.some(longitude => (longitude <= -160));
-            let isAboveAntiMeridian = longitudes.some(longitude => (longitude >= 160))
-            let isCrossAntimeridian = isBelowAntiMeridian && isAboveAntiMeridian;
-            let index = latIndex*this.data.longitudes.length + (this.data.longitudes.length - 1);
-            if(!this.data.values[index] && this.data.values[index] !== 0) {
-                continue;
-            }
-            let polygon: IQuad = [
-                [this.data.latitudes[latIndex], this.data.longitudes[this.data.longitudes.length - 2]],
-                [this.data.latitudes[latIndex], this.data.longitudes[this.data.longitudes.length - 1]],
-                [this.data.latitudes[latIndex + 1], this.data.longitudes[this.data.longitudes.length - 1]],
-                [this.data.latitudes[latIndex + 1], this.data.longitudes[this.data.longitudes.length - 2]]
-            ];
-            let value = this.normalizeValue(this.data.values[index]);
-            let triangles: ITriangle[] = [];
-            if(isCrossAntimeridian) {
-                let newPolygons = this.cutPolygon(polygon);
-                triangles = this.createTrianglesFromPolygons(newPolygons);
+    private cutPolygonOver180Longitude(polygon: IPolygon): [IPolygon, IPolygon] {
+        let newNegativePolygon: IPolygon = [];
+        let newPositivePolygon: IPolygon = [];
+        for(let i = 0; i < polygon.length; i++) {
+            if(polygon[i][1] <= 180) {
+                newPositivePolygon.push(polygon[i]);
+                let nextIndex = (i + 1) % polygon.length;
+                let nextLongitude = polygon[nextIndex][1];
+                if(nextLongitude > 180) {
+                    let halfwayPoint = (polygon[i][0] + polygon[nextIndex][0]) / 2;
+                    newNegativePolygon.push([halfwayPoint, -180])
+                    newPositivePolygon.push([halfwayPoint, 180])
+                }
             } else {
-                triangles = this.createTrianglesFromQuad(polygon);
+                newNegativePolygon.push([polygon[i][0], polygon[i][1] - 360]);
+                let nextIndex = (i + 1) % polygon.length;
+                let nextLongitude = polygon[nextIndex][1];
+                if(nextLongitude < 180) {
+                    let halfwayPoint = (polygon[i][0] + polygon[nextIndex][0]) / 2;
+                    newPositivePolygon.push([halfwayPoint, 180])
+                    newNegativePolygon.push([halfwayPoint, -180])
+                }
             }
-            this.addTrianglesToVertices(triangles, value)
         }
+        return [newNegativePolygon, newPositivePolygon];
     }
+
 }
