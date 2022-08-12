@@ -53,3 +53,23 @@ wrapper.addTo(map);
 wrapper.addlayer(layer);
 wrapper.addlayer(layer2);
 ```
+
+Alternatively, you can import the plugin directly in your HTML from a CDN
+
+```
+  <link rel="stylesheet" href="https://unpkg.com/@stcorp/leaflet-gl-vector-layer@0.1.9/dist/index.css">
+  <script src="https://unpkg.com/@stcorp/leaflet-gl-vector-layer@0.1.9/dist/index.umd.js"></script>
+```
+
+Then, you can use the plugin in the following way:
+
+```
+var map = L.map('map', {})
+  .setView([0, 0], 0);
+
+var glVectorLayerWrapper = new window.leafletGlVectorLayer.LeafletGlVectorLayerWrapper();
+var singleGlVectorLayer = new window.leafletGlVectorLayer.LeafletGlVectorLayer(leafletGlVectorLayerOptions);
+
+glVectorLayerWrapper.addTo(map);
+glVectorLayerWrapper.addLayer(singleGlVectorLayer);
+```
