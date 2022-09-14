@@ -79,6 +79,7 @@ export class LeafletGlVectorLayer extends L.GridLayer {
         if(!(['swath', 'grid', 'points'].includes(this.options.leafletGlVectorLayerOptions.plot_type))) {
             throw new Error(`${this.options.leafletGlVectorLayerOptions.plot_type} is not a valid renderer type`);
         }
+
         this.dataHelper = new DataHelper(this);
         this.renderer = new RendererMap[this.options.leafletGlVectorLayerOptions.plot_type](this.options.leafletGlVectorLayerOptions, this.canvases, map, this.dataHelper)
 

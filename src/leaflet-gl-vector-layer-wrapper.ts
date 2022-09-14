@@ -1,6 +1,6 @@
 import {LeafletGlVectorLayerControlWrapper} from "./leaflet-gl-vector-layer-controls-wrapper";
 import {LeafletGlVectorLayerControl} from "./leaflet-gl-vector-layer-controls";
-import LeafletGlVectorLayer from "./leaflet-gl-vector-layer";
+import { LeafletGlVectorLayer } from "./leaflet-gl-vector-layer";
 import * as L from 'leaflet';
 export class LeafletGlVectorLayerWrapper extends L.Layer {
 
@@ -57,30 +57,5 @@ export class LeafletGlVectorLayerWrapper extends L.Layer {
 
   private onLayerSelected(layer: LeafletGlVectorLayer) {
     this.selectedLayer = layer;
-    // TODO: Commented this out for now, maybe we can add some effect with webgl
-    // for(let layer of this.layers) {
-    //   if(layer.id !== this.selectedLayer.id) {
-    //     this.animateLayerOpacity(layer);
-    //   } else {
-    //     if(layer.canvas) {
-    //       layer.canvas.style.opacity = "1";
-    //     }
-    //   }
-    // }
-  }
-
-  private animateLayerOpacity(layer: LeafletGlVectorLayer) {
-    if(layer.canvas) {
-      layer.canvas.style.opacity = "0.3";
-    }
-    let interval = setInterval(() => {
-      let opacity = parseFloat(layer.canvas.style.opacity);
-      let newOpacity = opacity + 0.01;
-      layer.canvas.style.opacity = newOpacity + '';
-      if(newOpacity >= 1) {
-        clearInterval(interval);
-      }
-    }, 20)
-
   }
 }
