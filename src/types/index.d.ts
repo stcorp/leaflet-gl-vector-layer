@@ -5,6 +5,8 @@ import {GridRenderer} from "../grid-renderer";
 import {PointsRenderer} from "../points-renderer";
 import {SwathRenderer} from "../swath-renderer";
 import {DataHelper} from "../helpers/data-helper";
+import { LeafletGlVectorLayerControls } from '../controls/leaflet-gl-vector-layer-controls';
+import { ExtendedOptions } from '../leaflet-gl-vector-layer';
 
 export class LeafletGlVectorLayer extends Layer {
   canvas: HTMLCanvasElement;
@@ -37,7 +39,7 @@ export class LeafletGlVectorLayer extends Layer {
 
 export class LeafletGlVectorLayerWrapper extends L.Layer {
   private layers;
-  controlWrapper: LeafletGlVectorLayerControlWrapper;
+  controls: LeafletGlVectorLayerControls;
   private selectedLayer;
   map: L.Map;
   constructor();

@@ -6,11 +6,10 @@ import { IQuad, ITriangle} from "./types/polygon";
 export class SwathRenderer extends BaseRenderer {
 
     private data: IData;
-    public map: L.Map;
     private index: number;
 
-    constructor(leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions, canvases: HTMLCanvasElement[], map: L.Map, dataHelper: DataHelper) {
-        super(leafletGlVectorLayerOptions, canvases, map, dataHelper);
+    constructor(leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions, map: L.Map, dataHelper: DataHelper, canvas: HTMLCanvasElement) {
+        super(leafletGlVectorLayerOptions, map, dataHelper, canvas);
         this.data = leafletGlVectorLayerOptions.data as IData;
         this.map = map;
         this.index = 0;
@@ -47,5 +46,11 @@ export class SwathRenderer extends BaseRenderer {
         }
         this.numPoints = this.vertices.length / 6;
         callback();
+    }
+
+    public cleanUp() {
+        super.cleanUp();
+        this.vertices = [];
+        this.map = undefined;
     }
 }

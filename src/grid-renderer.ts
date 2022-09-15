@@ -8,13 +8,13 @@ import {IPolygon, IQuad, ITriangle} from "./types/polygon";
 export class GridRenderer extends BaseRenderer {
 
     private data: IData;
-    public map: Map;
 
-    constructor(leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions, canvases: HTMLCanvasElement[], map: Map, dataHelper: DataHelper) {
-        super(leafletGlVectorLayerOptions, canvases, map, dataHelper);
+    constructor(leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions, map: Map, dataHelper: DataHelper, canvas: HTMLCanvasElement) {
+        super(leafletGlVectorLayerOptions, map, dataHelper, canvas);
         this.map = map;
         this.data = leafletGlVectorLayerOptions.data as IData;
         this.drawType = WebGLRenderingContext.TRIANGLES;
+        this.vertices = [];
     }
 
     public processData(callback: () => void) {
@@ -146,4 +146,9 @@ export class GridRenderer extends BaseRenderer {
         }
     }
 
+    public cleanUp() {
+        super.cleanUp();
+        this.vertices = [];
+        this.map = undefined;
+    }
 }

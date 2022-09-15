@@ -6,10 +6,9 @@ import {IData} from "./types/data";
 export class PointsRenderer extends BaseRenderer {
 
     private data: IData;
-    public map: Map;
 
-    constructor(leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions, canvases: HTMLCanvasElement[], map: Map, dataHelper: DataHelper) {
-        super(leafletGlVectorLayerOptions, canvases, map, dataHelper);
+    constructor(leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions, map: Map, dataHelper: DataHelper, canvas: HTMLCanvasElement) {
+        super(leafletGlVectorLayerOptions, map, dataHelper, canvas);
         this.map = map;
         this.data = leafletGlVectorLayerOptions.data as IData;
         this.drawType = WebGLRenderingContext.POINTS;
@@ -17,6 +16,9 @@ export class PointsRenderer extends BaseRenderer {
     }
 
     public processData(callback: () => void) {
+        if(!this.map) {
+            return;
+        }
         super.processData();
 
         this.vertices = [];
@@ -28,10 +30,18 @@ export class PointsRenderer extends BaseRenderer {
             let pixel = this.map.project([this.data.latitudes[index], this.data.longitudes[index]], 0);
             let value = this.normalizeValue(this.data.values[index]);
             this.vertexValues.push(value);
-            this.vertices.push(...super.buildPixel(pixel, value));
+            let adjustedValue = (value + this.dataHelper.absoluteCurrentMinValue) / (this.dataHelper.currentMaxValue + this.dataHelper.absoluteCurrentMinValue);
+            let color = this.unwrappedGradient[Math.floor(adjustedValue * this.colorFidelity)];
+            this.vertices.push(pixel.x, pixel.y, color[0], color[1], color[2], color[3]);
         }
         this.numPoints = this.vertices.length / 6;
         callback();
 
+    }
+
+    public cleanUp() {
+        super.cleanUp();
+        this.vertices = [];
+        this.map = undefined;
     }
 }

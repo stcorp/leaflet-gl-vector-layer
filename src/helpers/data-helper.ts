@@ -1,4 +1,5 @@
 import {LeafletGlVectorLayer} from "../leaflet-gl-vector-layer";
+import { LeafletGlVectorLayerOptions } from '../types/leaflet-gl-vector-layer-options';
 
 export class DataHelper {
   private sortedData: Float32Array;
@@ -10,9 +11,13 @@ export class DataHelper {
   public absoluteCurrentMaxValue: number;
   public mean: number;
   public median: number;
+  private options: LeafletGlVectorLayerOptions;
 
-  constructor(private layer: LeafletGlVectorLayer) {
-    this.sortedData = this.layer.options.leafletGlVectorLayerOptions.data.values.slice(0).sort();
+  constructor(options: LeafletGlVectorLayerOptions) {
+    this.options = {
+      ...options
+    };
+    this.sortedData = options.data.values.slice(0).sort();
     let firstNonInfIndex = 0;
     for(let i = 0; i < this.sortedData.length; i++) {
       if(this.sortedData[i] > -Infinity) {
@@ -45,7 +50,7 @@ export class DataHelper {
   }
 
   public getMax() {
-    let existingColorRange = this.layer.options.leafletGlVectorLayerOptions.colorrange;
+    let existingColorRange = this.options.colorrange;
     this.maxValue = this.sortedData[this.sortedData.length - 1];
     if(existingColorRange?.length) {
       this.currentMaxValue = existingColorRange[1];
@@ -57,7 +62,7 @@ export class DataHelper {
   }
 
   public getMin() {
-    let existingColorRange = this.layer.options.leafletGlVectorLayerOptions.colorrange;
+    let existingColorRange = this.options.colorrange;
     this.minValue = this.sortedData[0];
     if(existingColorRange?.length) {
       this.currentMinValue = existingColorRange[0];
@@ -80,7 +85,15 @@ export class DataHelper {
     return this.mean;
   }
 
-  public setValue(type: 'currentMinValue'|'currentMaxValue', value: number) {
-    this[type] = value;
+  public setValue(type: 'min'|'max', value: number) {
+    if(type === 'min') {
+      this.currentMinValue = value;
+    } else {
+      this.currentMaxValue = value;
+    }
+  }
+
+  public cleanUp() {
+    this.sortedData = new Float32Array([]);
   }
 }

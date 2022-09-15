@@ -1,5 +1,4 @@
 import {LatLngBounds, Point} from "leaflet";
-import {GlCollectionWrapper} from "../base-renderer";
 
 export interface ICanvasOverlayDrawEvent {
     bounds: LatLngBounds;
@@ -8,5 +7,4 @@ export interface ICanvasOverlayDrawEvent {
     size: Point;
     zoomScale: number;
     zoom: number;
-    glContextWrapper: GlCollectionWrapper;
 }

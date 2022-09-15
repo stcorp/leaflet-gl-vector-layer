@@ -14,61 +14,77 @@ import {
 import {PointsRenderer} from "./points-renderer";
 import {GridRenderer} from "./grid-renderer";
 import {SwathRenderer} from "./swath-renderer";
-import {LeafletGlVectorLayerControl} from "./leaflet-gl-vector-layer-controls";
 import {DataHelper} from "./helpers/data-helper";
 import {LeafletGlVectorLayerWrapper} from "./leaflet-gl-vector-layer-wrapper";
 import {guidGenerator} from "./helpers/guid-generator";
 import {LeafletGlVectorLayerOptions} from "./types/leaflet-gl-vector-layer-options";
-// import throttle from 'lodash/throttle';
-
-interface ExtendedOptions extends L.GridLayerOptions {
+import { ControlsService, ILimitsSubject } from './services/controls-service';
+import chroma from 'chroma-js';
+import { IXrgbaColor } from './types/colors';
+import { ColorService } from './services/color-service';
+import { Subscription } from 'rxjs';
+import { IHandler } from "./types/handlers";
+export interface ExtendedOptions extends L.GridLayerOptions {
     leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions
 }
 export class LeafletGlVectorLayer extends L.GridLayer {
-    public canvases: HTMLCanvasElement[] = [];
+    public canvas: HTMLCanvasElement;
     public _map: any;
     public renderer: SwathRenderer|GridRenderer|PointsRenderer|undefined;
     private _paneName: string = 'overlayPane';
     public dataHelper: DataHelper;
     public options: ExtendedOptions;
-    public wrapper: LeafletGlVectorLayerWrapper;
-    public control: LeafletGlVectorLayerControl;
-    public _leaflet_id: string;
     public id: string;
+    public currentGradient: chroma.Scale|undefined;
     private isFirstRun = true;
+    public isHidden = false;
+    private subscriptions: Subscription[] = [];
+    private handlers: any[] = [];
     constructor(newOptions: ExtendedOptions) {
         super(newOptions);
         this.id = guidGenerator()
+        ControlsService.setOptions(this.id, newOptions);
         setOptions(this, {...this.options, leafletGlVectorLayerOptions: newOptions.leafletGlVectorLayerOptions});
     }
 
     public onRemove(map: Map) {
-        this.wrapper?.cleanUpControlAndLayerData(this);
-        for(let canvas of this.canvases) {
-            canvas?.remove();
-        }
+        this.canvas.remove();
         this.renderer = undefined;
-        this._map.off("moveend", this._reset, this);
-        this._map.off("resize", this._resize, this);
-        this._map.off(
-          "zoomanim",
-          Layer ? this._animateZoom : this._animateZoomNoLayer,
-          this
-        );
+        for(let handler of this.handlers) {
+            this._map.off(handler.type, handler.func, this);
+        }
+        this.handlers = [];
         return this;
     }
 
     public addTo(map: L.Map) {
-        this._map = map;
-        this.onAdd(map);
-        return this;
+      this._map = map;
+      super.onAdd(map);
+      this.onAdd(map);
+      return this;
+    }
+
+    public cleanUp() {
+        this.canvas.remove();
+        this.renderer?.cleanUp();
+        this.dataHelper.cleanUp();
+        this.renderer = undefined;
+        for(let handler of this.handlers) {
+            this._map.off(handler.type, handler.func, this);
+        }
+        this.handlers = [];
+        this._map = undefined;
+        this.currentGradient = undefined;
+        for(let subscription of this.subscriptions) {
+            subscription.unsubscribe();
+        }
+        this.subscriptions = [];
     }
 
     public onAdd(map: Map) {
         this._map = map;
-        for(let i = 0; i < 5; i++) {
-            this.createCanvas();
-        }
+        this.canvas = this.createCanvas();
+        this.renderer = undefined;
         let RendererMap: {
             [x: string]: typeof SwathRenderer | typeof GridRenderer | typeof PointsRenderer
         } = {
@@ -80,8 +96,8 @@ export class LeafletGlVectorLayer extends L.GridLayer {
             throw new Error(`${this.options.leafletGlVectorLayerOptions.plot_type} is not a valid renderer type`);
         }
 
-        this.dataHelper = new DataHelper(this);
-        this.renderer = new RendererMap[this.options.leafletGlVectorLayerOptions.plot_type](this.options.leafletGlVectorLayerOptions, this.canvases, map, this.dataHelper)
+        this.dataHelper = new DataHelper(this.options.leafletGlVectorLayerOptions);
+        this.renderer = new RendererMap[this.options.leafletGlVectorLayerOptions.plot_type](this.options.leafletGlVectorLayerOptions, map, this.dataHelper, this.canvas)
 
 
         if (!map.getPane(this._paneName)) {
@@ -90,26 +106,56 @@ export class LeafletGlVectorLayer extends L.GridLayer {
 
         // let throttledReset = throttle(this._reset, 100);
         // map.on('move', this._reset, this);
-        map.on("moveend", this._reset, this);
-        map.on("resize", this._resize, this);
+        let moveEndHandler = {
+            func: this._reset,
+            type: 'moveend'
+        }
+        map.on(moveEndHandler.type, moveEndHandler.func);
 
+        let resizehandler = {
+            func: this._resize,
+            type: 'resize'
+        }
+        map.on(resizehandler.type, resizehandler.func);
+        this.handlers.push(moveEndHandler, resizehandler);
         if (this.isAnimated()) {
+            let zoomhandler = {
+                func: Layer ? this._animateZoom : this._animateZoomNoLayer,
+                type: 'zoomanim'
+            }
             map.on(
-              "zoomanim",
-              Layer ? this._animateZoom : this._animateZoomNoLayer,
+              zoomhandler.type,
+              zoomhandler.func,
               this
             );
+            this.handlers.push(zoomhandler);
         }
 
         this._reset();
-        this.control = new LeafletGlVectorLayerControl(this);
         this.renderer.bindBuffers();
-        this.control.subjects.gradient.subscribe({
-            next: this.updateColors.bind(this)
+        let gradientSubscription = ColorService.gradientSubject.subscribe(data => {
+            this.currentGradient = data.gradient;
+            this.updateColors(data);
         })
-        this.control.subjects.updateLimits.subscribe({
-            next: this.updateValues.bind(this)
+        let limitsSubscription = ControlsService.limitsSubject.subscribe(data => {
+            this.updateValues(data);
         })
+
+        let hideLayerSubscription = ControlsService.hideLayerSubject.subscribe((layer: LeafletGlVectorLayer) => {
+            if(layer.id === this.id) {
+                this.isHidden = true;
+                this.canvas.style.opacity = '0';
+            }
+        });
+
+        let showLayerSubscription = ControlsService.showLayerSubject.subscribe((layer: LeafletGlVectorLayer) => {
+            if(layer.id === this.id) {
+                this.isHidden = false;
+                this.canvas.style.opacity = `${this.options.opacity ?? 1}`;
+            }
+        })
+
+        this.subscriptions.push(gradientSubscription, limitsSubscription, hideLayerSubscription, showLayerSubscription);
         return this;
     }
 
@@ -125,25 +171,23 @@ export class LeafletGlVectorLayer extends L.GridLayer {
             throw new Error("unable to find pane");
         }
         this._map.getPane(this._paneName)?.appendChild(canvas);
-        // this.createDuplicateCanvas();
-        // this.createDuplicateWebGlCanvas();
-        this.canvases.push(canvas);
 
 
         return canvas;
     }
 
-    private updateColors(gradient: chroma.Scale|null|undefined): void {
-        if(this.renderer && gradient) {
-            this.renderer.setCustomColorMap(gradient);
-            if(this.isFirstRun) {
-                this.renderer.processData(this.updateRender.bind(this));
-                this.isFirstRun = false;
-            } else {
-                this.renderer.updateColors();
-                this._reset();
+    private updateColors(data: {gradient: chroma.Scale|null|undefined, layer: LeafletGlVectorLayer}): void {
+        if(this.id === data.layer.id) {
+            if(this.renderer && data.gradient) {
+                this.renderer.setCustomColorMap(data.gradient);
+                if(this.isFirstRun) {
+                    this.renderer.processData(this.updateRender.bind(this));
+                    this.isFirstRun = false;
+                } else {
+                    this.renderer.updateColors();
+                    this._reset();
+                }
             }
-
         }
     }
 
@@ -152,33 +196,28 @@ export class LeafletGlVectorLayer extends L.GridLayer {
         this._reset();
     }
 
-    private updateValues(limits: {min: number, max: number}): void {
-        this.dataHelper.updateLimits(limits);
-        this.renderer?.processData(this.updateRender.bind(this));
+    private updateValues(data: ILimitsSubject): void {
+        if(ControlsService.selectedLayer?.id === this.id) {
+            this.dataHelper.updateLimits(data);
+            this.renderer?.processData(this.updateRender.bind(this));
+        }
     }
 
     public isAnimated(): boolean {
         return Boolean(this._map.options.zoomAnimation && Browser.any3d);
     }
 
-    private _resize(resizeEvent: ResizeEvent): void {
-        if (this.canvases.length && resizeEvent) {
-            for(let canvas of this.canvases) {
-                canvas.width = resizeEvent.newSize.x;
-                canvas.height = resizeEvent.newSize.y;
-            }
-
+    private _resize(resizeEvent: any): void {
+        if (this.canvas && resizeEvent) {
+            this.canvas.width = resizeEvent.newSize.x;
+            this.canvas.height = resizeEvent.newSize.y;
         }
     }
 
     private _reset(): void {
-        if (this.canvases.length) {
+        if (this.canvas) {
             const topLeft = this._map.containerPointToLayerPoint([0, 0]);
-            for(let canvas of this.canvases) {
-                DomUtil.setPosition(canvas, topLeft);
-            }
-            // DomUtil.setPosition(this.duplicateCanvas, topLeft);
-            // DomUtil.setPosition(this.duplicateWebGlCanvas, topLeft);
+            DomUtil.setPosition(this.canvas, topLeft);
         }
         this._redraw();
     }
@@ -192,54 +231,21 @@ export class LeafletGlVectorLayer extends L.GridLayer {
         const topLeft = new LatLng(bounds.getNorth(), bounds.getWest());
 
         if (this.renderer) {
-            for(let glContextWrapper of this.renderer.glContextWrappers) {
-                let adjustedTopLeft = new LatLng(topLeft.lat, topLeft.lng + (360 * glContextWrapper.offsetMultiplier))
-                const offset = this._unclampedProject(adjustedTopLeft, 0);
-                while(offset.x > 256) {
-                    offset.x = offset.x - 256*5;
-                }
-                while(offset.x < -this._map.getSize().x) {
-                    offset.x = offset.x + 256*5
-                }
-                this.renderer.render({
-                    bounds,
-                    offset,
-                    scale: Math.pow(2, zoom),
-                    size,
-                    zoomScale,
-                    zoom,
-                    glContextWrapper
-                })
-            }
-
-            // let adjustedTopLeft = new LatLng(
-            //     topLeft.lat,
-            //     topLeft.lng + 360
-            // )
-            // const offsetAdjusted = this._unclampedProject(adjustedTopLeft, 0);
-            // this.renderer.renderDuplicateWebGlCanvas({
-            //     bounds,
-            //     canvas: this.duplicateWebGlCanvas,
-            //     offset: offsetAdjusted,
-            //     scale: Math.pow(2, zoom),
-            //     size,
-            //     zoomScale,
-            //     zoom,
-            // })
-            // this.renderer.renderDuplicateCanvas({
-            //     bounds,
-            //     canvas: this.duplicateCanvas,
-            //     offset,
-            //     scale: Math.pow(2, zoom),
-            //     size,
-            //     zoomScale,
-            //     zoom,
-            // })
+            let adjustedTopLeft = new LatLng(topLeft.lat, topLeft.lng)
+            const offset = this._unclampedProject(adjustedTopLeft, 0);
+            this.renderer.render({
+                bounds,
+                offset,
+                scale: Math.pow(2, zoom),
+                size,
+                zoomScale,
+                zoom
+            })
         }
     }
 
 
-    private _animateZoom(e: ZoomAnimEvent): void {
+    private _animateZoom(e: any): void {
         const { _map } = this;
         const scale = _map.getZoomScale(e.zoom, _map.getZoom());
         const offset = this._unclampedLatLngBoundsToNewLayerBounds(
@@ -247,24 +253,20 @@ export class LeafletGlVectorLayer extends L.GridLayer {
           e.zoom,
           e.center
         ).min;
-        if (this.canvases.length && offset) {
-            for(let canvas of this.canvases) {
-                DomUtil.setTransform(canvas, offset, scale);
-            }
+        if (this.canvas && offset) {
+            DomUtil.setTransform(this.canvas, offset, scale);
         }
     }
 
-    private _animateZoomNoLayer(e: ZoomAnimEvent): void {
+    private _animateZoomNoLayer(e: any): void {
         const { _map } = this;
-        if (this.canvases.length) {
+        if (this.canvas) {
             const scale = _map.getZoomScale(e.zoom, _map.getZoom());
             const offset = _map
               ._getCenterOffset(e.center)
               ._multiplyBy(-scale)
               .subtract(_map._getMapPanePos());
-            for(let canvas of this.canvases) {
-                DomUtil.setTransform(canvas, offset, scale);
-            }
+            DomUtil.setTransform(this.canvas, offset, scale);
         }
     }
 

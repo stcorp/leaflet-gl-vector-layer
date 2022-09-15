@@ -3,6 +3,8 @@
 Add contents of data.js here:
  */
 
+import { IXrgbaColor, IRGBA } from '../types/colors';
+
 const data: {
   [name: string]: {
     colors: [number, number, number][],
@@ -15,7 +17,7 @@ const data: {
 Define auxiliary functions for evaluating colormaps
  */
 
-export function evaluate_cmap(x: number, name: string, reverse: boolean): [number, number, number, number] {
+export function evaluate_cmap(x: number, name: string, reverse: boolean): IRGBA {
   /**
    * Evaluate colormap `name` at some value `x`.
    * @param {number} x - The value (between 0 and 1) at which to evaluate the colormap.
@@ -50,7 +52,7 @@ export function evaluate_cmap(x: number, name: string, reverse: boolean): [numbe
   }
 }
 
-export function interpolated(x: number, colors: number[][]): [number, number, number, number] {
+export function interpolated(x: number, colors: number[][]): IRGBA {
   let lo = Math.floor(x * (colors.length - 1));
   let hi = Math.ceil(x * (colors.length - 1));
   let r = Math.round((colors[lo][0] + colors[hi][0]) / 2 * 255);
@@ -60,7 +62,7 @@ export function interpolated(x: number, colors: number[][]): [number, number, nu
   return [r, g, b, a];
 }
 
-export function qualitative(x: number, colors: number[][]): [number, number, number, number] {
+export function qualitative(x: number, colors: number[][]): IRGBA {
   let idx = 0;
   while (x > (idx + 1) / (colors.length) ) { idx++; }
   let r = Math.round(colors[idx][0] * 255);
@@ -70,7 +72,7 @@ export function qualitative(x: number, colors: number[][]): [number, number, num
   return [r, g, b, a];
 }
 
-export function partial(name: string): (x: number) => [number, number, number, number] {
+export function partial(name: string): (x: number) => IRGBA {
   if (name.endsWith('_r')) {
     return function(x: number) { return evaluate_cmap(x, name.substring(0, name.length - 2), true) };
   } else {
@@ -78,7 +80,7 @@ export function partial(name: string): (x: number) => [number, number, number, n
   }
 }
 
-export function getColor(name: string): [number, number, number, number, number][] {
+export function getColor(name: string): IXrgbaColor[] {
   let interpolate = data[name]['interpolate'];
   let colors: [number, number, number][] = data[name]['colors'];
   let finalColors = [];
@@ -94,9 +96,9 @@ export function getColor(name: string): [number, number, number, number, number]
   }
   let colorMap = [];
   for(let i = 0; i < finalColors.length; i++) {
-    colorMap.push([i / (finalColors.length-1), ...partial(name)(i / (finalColors.length-1))] as [number, number, number, number, number]);
+    colorMap.push([i / (finalColors.length-1), ...partial(name)(i / (finalColors.length-1))] as IXrgbaColor);
     if(!interpolate && i < (finalColors.length - 1)) {
-      colorMap.push([((i + 1) / (finalColors.length-1)) - 0.001, ...partial(name)(i / (finalColors.length-1))] as [number, number, number, number, number]);
+      colorMap.push([((i + 1) / (finalColors.length-1)) - 0.001, ...partial(name)(i / (finalColors.length-1))] as IXrgbaColor);
     }
 
   }

@@ -1,4 +1,4 @@
-import {MapMatrix} from "./map-matrix";
+import {MapMatrix} from "./helpers/map-matrix";
 import {Map} from "leaflet";
 import {LeafletGlVectorLayerOptions} from "./types/leaflet-gl-vector-layer-options";
 import {ICanvasOverlayDrawEvent} from "./types/canvas-overlay-draw-event";
@@ -14,16 +14,15 @@ export interface GlCollectionWrapper {
     matrix: WebGLUniformLocation;
     pointSizeLoc: WebGLUniformLocation;
     vertBuffer: WebGLBuffer;
-    offsetMultiplier: number;
 }
 
 export abstract class BaseRenderer {
 
     public vertices: number[] = [];
     public numPoints: number = 0;
-    public glContextWrappers: GlCollectionWrapper[] = [];
+    public glContextWrapper: GlCollectionWrapper|undefined;
     public mapMatrix: MapMatrix;
-    public abstract map: Map;
+    protected map: Map|undefined;
     public customColorMap: chroma.Scale;
     private fragmentShader: WebGLShader;
     private vertexShader: WebGLShader;
@@ -62,27 +61,13 @@ export abstract class BaseRenderer {
         }
     `
 
-    constructor(leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions, canvases: HTMLCanvasElement[], map: Map, private dataHelper: DataHelper) {
+    constructor(leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions, map: Map, protected dataHelper: DataHelper, private canvas: HTMLCanvasElement) {
         this.unwrappedGradient = [];
         this.mapMatrix = new MapMatrix();
-        for(let [index, canvas] of canvases.entries()) {
-            let offset;
-            if(index === 0) {
-                offset = -2;
-            } else if (index === 1) {
-                offset = -1;
-            } else if (index === 2){
-                offset = 0;
-            } else if (index === 3) {
-                offset = 1;
-            } else {
-                offset = 2;
-            }
-            this.createGlContext(canvas, leafletGlVectorLayerOptions, offset);
-        }
+        this.createGlContext(this.canvas, leafletGlVectorLayerOptions);
     }
 
-    private createGlContext(canvas: HTMLCanvasElement, leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions, offsetMultiplier: number) {
+    private createGlContext(canvas: HTMLCanvasElement, leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions) {
 
         let gl = canvas.getContext('webgl', { antialias: true, preserveDrawingBuffer: true });
         if(!gl) {
@@ -113,15 +98,14 @@ export abstract class BaseRenderer {
         gl.viewport(0, 0, canvas.width, canvas.height);
         gl.uniformMatrix4fv(matrix, false, this.mapMatrix.array);
         gl.uniform1f(pointSizeLoc, leafletGlVectorLayerOptions.pointsize ?? 4.0);
-        this.glContextWrappers.push({
+        this.glContextWrapper = {
             gl,
             program,
             canvas,
             matrix,
             pointSizeLoc,
-            vertBuffer,
-            offsetMultiplier
-        })
+            vertBuffer
+        }
     }
 
     private createShaders(gl: WebGLRenderingContext) {
@@ -153,10 +137,17 @@ export abstract class BaseRenderer {
 
     public updateColors() {
         this.unwrappedGradient = [];
-        for(let i = 0; i < this.colorFidelity + 1; i++) {
-            this.unwrappedGradient.push(this.customColorMap(i / this.colorFidelity).rgba());
+        if(!this.customColorMap || !this.colorFidelity) {
+            return;
         }
+        for(let i = 0; i < this.colorFidelity + 1; i++) {
+            try {
+                this.unwrappedGradient.push(this.customColorMap(i / this.colorFidelity).rgba());
 
+            } catch(e) {
+                console.log(e);
+            }
+        }
         for(let i = 0; i < this.vertexValues.length; i++) {
             let adjustedValue = (this.vertexValues[i] + this.dataHelper.absoluteCurrentMinValue) / (this.dataHelper.currentMaxValue + this.dataHelper.absoluteCurrentMinValue);
             let color = this.unwrappedGradient[Math.floor(adjustedValue * this.colorFidelity)];
@@ -171,77 +162,91 @@ export abstract class BaseRenderer {
     }
 
     public bindBuffers() {
-        for(let glContextWrapper of this.glContextWrappers) {
-            let colorLoc = glContextWrapper.gl.getAttribLocation(glContextWrapper.program, "a_color");
-            var vertArray = new Float32Array(this.vertices);
-            var fsize = vertArray.BYTES_PER_ELEMENT;
-
-            glContextWrapper.gl.bindBuffer(glContextWrapper.gl.ARRAY_BUFFER, glContextWrapper.vertBuffer);
-            glContextWrapper.gl.bufferData(glContextWrapper.gl.ARRAY_BUFFER, vertArray, glContextWrapper.gl.STATIC_DRAW);
-            let vertLoc = glContextWrapper.gl.getAttribLocation(glContextWrapper.program, "a_vertex");
-            glContextWrapper.gl.vertexAttribPointer(vertLoc, 2, glContextWrapper.gl.FLOAT, false,4*6,0);
-            glContextWrapper.gl.enableVertexAttribArray(vertLoc);
-            glContextWrapper.gl.vertexAttribPointer(colorLoc, 4, glContextWrapper.gl.FLOAT, false, fsize*6, fsize*2);
-            glContextWrapper.gl.enableVertexAttribArray(colorLoc);
+        if(!this.glContextWrapper) {
+            return;
         }
+        let colorLoc = this.glContextWrapper.gl.getAttribLocation(this.glContextWrapper.program, "a_color");
+        var vertArray = new Float32Array(this.vertices);
+        var fsize = vertArray.BYTES_PER_ELEMENT;
+
+        this.glContextWrapper.gl.bindBuffer(this.glContextWrapper.gl.ARRAY_BUFFER, this.glContextWrapper.vertBuffer);
+        this.glContextWrapper.gl.bufferData(this.glContextWrapper.gl.ARRAY_BUFFER, vertArray, this.glContextWrapper.gl.STATIC_DRAW);
+        let vertLoc = this.glContextWrapper.gl.getAttribLocation(this.glContextWrapper.program, "a_vertex");
+        this.glContextWrapper.gl.vertexAttribPointer(vertLoc, 2, this.glContextWrapper.gl.FLOAT, false,4*6,0);
+        this.glContextWrapper.gl.enableVertexAttribArray(vertLoc);
+        this.glContextWrapper.gl.vertexAttribPointer(colorLoc, 4, this.glContextWrapper.gl.FLOAT, false, fsize*6, fsize*2);
+        this.glContextWrapper.gl.enableVertexAttribArray(colorLoc);
     }
 
     public setCustomColorMap(colorMap: chroma.Scale) {
         this.customColorMap = colorMap;
     }
     public updateBuffers() {
-        var vertArray = new Float32Array(this.vertices);
-        for(let glContextWrapper of this.glContextWrappers) {
-            glContextWrapper.gl.bindBuffer(glContextWrapper.gl.ARRAY_BUFFER, glContextWrapper.vertBuffer);
-            glContextWrapper.gl.bufferData(glContextWrapper.gl.ARRAY_BUFFER, vertArray, glContextWrapper.gl.STATIC_DRAW);
+        if(!this.glContextWrapper) {
+            return;
         }
+        var vertArray = new Float32Array(this.vertices);
+        this.glContextWrapper.gl.bindBuffer(this.glContextWrapper.gl.ARRAY_BUFFER, this.glContextWrapper.vertBuffer);
+        this.glContextWrapper.gl.bufferData(this.glContextWrapper.gl.ARRAY_BUFFER, vertArray, this.glContextWrapper.gl.STATIC_DRAW);
 
     }
 
     public render(event: ICanvasOverlayDrawEvent) {
-        if (!event.glContextWrapper.gl) return this;
-
+        if (!this.glContextWrapper?.gl) return this;
         if(event) {
-            const scale = Math.pow(2, event.zoom);
-            // set base matrix to translate canvas pixel coordinates -> webgl coordinates
-            this.mapMatrix
-              .setSize(event.glContextWrapper.canvas.width, event.glContextWrapper.canvas.height)
-              .scaleTo(scale)
-              .translateTo(-event.offset.x, -event.offset.y);
+            const scale = event.scale;
+            let bounds = {
+                lonMin: event.bounds.getWest(),
+                lonMax: event.bounds.getEast(),
+                latMin: event.bounds.getSouth(),
+                latMax: event.bounds.getNorth()
+            }
+            let offset = {...event.offset};
+            this.drawWebGl(bounds, scale, offset);
         }
 
-        event.glContextWrapper.gl.clear(event.glContextWrapper.gl.COLOR_BUFFER_BIT);
-        event.glContextWrapper.gl.viewport(0, 0, event.glContextWrapper.canvas.width, event.glContextWrapper.canvas.height);
-        event.glContextWrapper.gl.uniformMatrix4fv(event.glContextWrapper.matrix, false, this.mapMatrix.array);
-        event.glContextWrapper.gl.drawArrays(this.drawType, 0, this.numPoints);
         return this;
     }
-    //
-    // public renderDuplicateCanvas(event: ICanvasOverlayDrawEvent) {
-    //     if (!this.gl || !event.canvas) {
-    //         return this;
-    //     }
-    //     event.canvas.getContext('2d')!.clearRect(0, 0, event.canvas.width, event.canvas.height);
-    //
-    //
-    //     let duplicateUntil = 900;
-    //     let duplicatedUntil = 180;
-    //     while(duplicatedUntil <= duplicateUntil) {
-    //         let projectedXy = this.map.project([90, duplicatedUntil], this.map.getZoom());
-    //         event.canvas.getContext('2d')!.drawImage(this.canvas, projectedXy.x, 0);
-    //         duplicatedUntil += 360;
-    //     }
-    //
-    //     duplicateUntil = -900;
-    //     duplicatedUntil = -180;
-    //     while(duplicatedUntil >= duplicateUntil) {
-    //         let projectedXy = this.map.project([90, duplicatedUntil], this.map.getZoom());
-    //         console.log(projectedXy);
-    //         event.canvas.getContext('2d')!.drawImage(this.canvas, projectedXy.x, 0);
-    //         duplicatedUntil -= 360;
-    //     }
-    //     return this;
-    // }
+
+    private drawWebGl(bounds: any, scale: number, offset: any) {
+        if(!this.glContextWrapper) {
+            return;
+        }
+        // Keep offset in bounds of canvas
+        while(offset.x < -512) {
+            offset.x += 256;
+        }
+        while(offset.x > 256) {
+            offset.x -= 256;
+        }
+        // Clear viewport and draw main image
+        this.glContextWrapper.gl.clear(this.glContextWrapper.gl.COLOR_BUFFER_BIT);
+        this.glContextWrapper.gl.viewport(0, 0, this.glContextWrapper.canvas.width, this.glContextWrapper.canvas.height);
+        this.drawSingleCopyOfData(scale, offset, 0);
+
+        // If map is zoomed out enough to wrap around the world, draw copies of data on the left and right
+        if(bounds.lonMin < -180 || bounds.lonMax > 180) {
+            let lonDistance = bounds.lonMax - bounds.lonMin;
+            let countOfWorldWraps = Math.ceil(lonDistance / 360);
+            for(let i = 1; i <= countOfWorldWraps; i++) {
+                this.drawSingleCopyOfData(scale, offset, i);
+                this.drawSingleCopyOfData(scale, offset, -i);
+            }
+        }
+    }
+
+    private drawSingleCopyOfData(scale: number, offset: { x: number, y: number }, tileMultiplier: number) {
+        if(!this.glContextWrapper) {
+            return;
+        }
+
+        this.mapMatrix
+          .setSize(this.glContextWrapper.canvas.width, this.glContextWrapper.canvas.height)
+          .scaleTo(scale)
+          .translateTo(-offset.x + (256 * tileMultiplier), -offset.y);
+        this.glContextWrapper.gl.uniformMatrix4fv(this.glContextWrapper.matrix, false, this.mapMatrix.array);
+        this.glContextWrapper.gl.drawArrays(this.drawType, 0, this.numPoints);
+    }
 
     protected buildPixel(xy: IPoint, value: number): [number, number, number, number, number, number] {
         let adjustedValue = (value + this.dataHelper.absoluteCurrentMinValue) / (this.dataHelper.currentMaxValue + this.dataHelper.absoluteCurrentMinValue);
@@ -337,7 +342,20 @@ export abstract class BaseRenderer {
     }
 
     private outputPixelFromlatLon(latitude: number, longitude: number, value: number): [number, number, number, number, number, number] {
+        if(!this.map) {
+            return [0, 0, 0, 0, 0, 0];
+        }
         let xy = this.map.project([latitude, longitude], 0);
         return this.buildPixel(xy, value);
+    }
+
+    protected cleanUp() {
+        this.glContextWrapper?.gl.deleteBuffer(this.glContextWrapper?.vertBuffer);
+        this.glContextWrapper?.gl.deleteProgram(this.glContextWrapper?.program);
+        this.glContextWrapper?.gl.deleteShader(this.fragmentShader);
+        this.glContextWrapper?.gl.deleteShader(this.vertexShader);
+        this.glContextWrapper = undefined;
+        this.map = undefined;
+        this.dataHelper.cleanUp();
     }
 }

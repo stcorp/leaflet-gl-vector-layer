@@ -14,6 +14,7 @@ let data: any;
 initData('points');
 async function initData(mode: 'points'|'grid'|'swath') {
     data = GenerateExampleData(mode);
+    let data2 = GenerateExampleData('grid');
     let leafletGlVectorLayerOptions: any = {
         leafletGlVectorLayerOptions: {
             data: {
@@ -22,9 +23,22 @@ async function initData(mode: 'points'|'grid'|'swath') {
             plot_type: mode
         }
     }
+    let leafletGlVectorLayerOptions2: any = {
+        leafletGlVectorLayerOptions: {
+            data: {
+                ...data2
+            },
+            plot_type: 'grid',
+            colormap: [[0, 1, 0, 0, 1], [0.5, 0, 1, 0, 1], [1, 0, 0, 1, 1]]
+        }
+    }
     let newGL = new LeafletGlVectorLayerWrapper();
     let layer = new LeafletGlVectorLayer(leafletGlVectorLayerOptions);
+    let layer2 = new LeafletGlVectorLayer(leafletGlVectorLayerOptions2);
+    let layer3 = new LeafletGlVectorLayer(leafletGlVectorLayerOptions2);
     newGL.addTo(map);
     newGL.addLayer(layer);
+    newGL.addLayer(layer2);
+    newGL.addLayer(layer3);
 }
 
