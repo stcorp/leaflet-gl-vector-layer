@@ -20,7 +20,13 @@ async function initData(mode: 'points'|'grid'|'swath') {
             data: {
                 ...data
             },
-            plot_type: mode
+            plot_type: mode,
+            colormap: [[0, 1, 0, 0, 1], [0.5, 0, 1, 0, 1], [1, 0, 0, 1, 1]],
+            colormaps: [
+                [[0, 0.2, 0.4, 0.6, 1], [0.5, 0.2, 1, 0, 1], [1, 1, 0.2, 1, 1]],
+                [[0, 1, 0, 0, 1], [0.2, 0.4, 1, 0.2, 1], [1, 0.8, 0.5, 0, 1]],
+            ],
+            colorrange: [0, 2]
         }
     }
     let leafletGlVectorLayerOptions2: any = {
@@ -28,17 +34,14 @@ async function initData(mode: 'points'|'grid'|'swath') {
             data: {
                 ...data2
             },
-            plot_type: 'grid',
-            colormap: [[0, 1, 0, 0, 1], [0.5, 0, 1, 0, 1], [1, 0, 0, 1, 1]]
+            plot_type: 'grid'
         }
     }
     let newGL = new LeafletGlVectorLayerWrapper();
     let layer = new LeafletGlVectorLayer(leafletGlVectorLayerOptions);
     let layer2 = new LeafletGlVectorLayer(leafletGlVectorLayerOptions2);
-    let layer3 = new LeafletGlVectorLayer(leafletGlVectorLayerOptions2);
     newGL.addTo(map);
     newGL.addLayer(layer);
     newGL.addLayer(layer2);
-    newGL.addLayer(layer3);
 }
 
