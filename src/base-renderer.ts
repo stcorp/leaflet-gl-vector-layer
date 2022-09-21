@@ -28,7 +28,7 @@ export abstract class BaseRenderer {
     private vertexShader: WebGLShader;
     protected vertexValues: number[] = [];
     protected unwrappedGradient: any[][];
-    protected colorFidelity: number = 10000;
+    protected colorFidelity: number = 1000;
     protected drawType: GLenum;
     private defaultVertexShader = `    
         uniform mat4 u_matrix;
