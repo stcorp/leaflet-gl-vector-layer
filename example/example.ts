@@ -1,7 +1,7 @@
 import 'leaflet/dist/leaflet.css';
 import * as L from 'leaflet';
 import '../src/styles/index.scss';
-import {LeafletGlVectorLayer, LeafletGlVectorLayerWrapper} from '../src';
+import { LeafletGlVectorLayer, LeafletGlVectorLayerWrapper, LeafletGlVectorLayerWrapperOptions } from '../src';
 import { GenerateExampleData } from './data-generator';
 
 const map = L.map('map', {})
@@ -15,17 +15,20 @@ initData('points');
 async function initData(mode: 'points'|'grid'|'swath') {
     data = GenerateExampleData(mode);
     let data2 = GenerateExampleData('grid');
+    let leafletGlVectorLayerWrapperOptions: LeafletGlVectorLayerWrapperOptions = {
+        colormaps: [
+            [[0, 0.2, 0.4, 0.6, 1], [0.5, 0.2, 1, 0, 1], [1, 1, 0.2, 1, 1]],
+            [[0, 1, 0, 0, 1], [0.2, 0.4, 1, 0.2, 1], [1, 0.8, 0.5, 0, 1]],
+            [[0, 1, 0, 0, 1], [0.5, 0, 1, 0, 1], [1, 0, 0, 1, 1]]
+        ],
+    }
     let leafletGlVectorLayerOptions: any = {
         leafletGlVectorLayerOptions: {
             data: {
                 ...data
             },
             plot_type: mode,
-            colormap: [[0, 1, 0, 0, 1], [0.5, 0, 1, 0, 1], [1, 0, 0, 1, 1]],
-            colormaps: [
-                [[0, 0.2, 0.4, 0.6, 1], [0.5, 0.2, 1, 0, 1], [1, 1, 0.2, 1, 1]],
-                [[0, 1, 0, 0, 1], [0.2, 0.4, 1, 0.2, 1], [1, 0.8, 0.5, 0, 1]],
-            ],
+            colormap: [[0, 1, 1, 0, 1], [0.5, 0, 1, 0, 1], [1, 0, 0, 1, 1]],
             colorrange: [0, 2]
         }
     }
@@ -37,7 +40,7 @@ async function initData(mode: 'points'|'grid'|'swath') {
             plot_type: 'grid'
         }
     }
-    let newGL = new LeafletGlVectorLayerWrapper();
+    let newGL = new LeafletGlVectorLayerWrapper(leafletGlVectorLayerWrapperOptions);
     let layer = new LeafletGlVectorLayer(leafletGlVectorLayerOptions);
     let layer2 = new LeafletGlVectorLayer(leafletGlVectorLayerOptions2);
     newGL.addTo(map);
