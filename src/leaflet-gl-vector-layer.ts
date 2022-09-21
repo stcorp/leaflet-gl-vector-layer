@@ -110,13 +110,13 @@ export class LeafletGlVectorLayer extends L.GridLayer {
             func: this._reset,
             type: 'moveend'
         }
-        map.on(moveEndHandler.type, moveEndHandler.func);
+        map.on(moveEndHandler.type, moveEndHandler.func, this);
 
         let resizehandler = {
             func: this._resize,
             type: 'resize'
         }
-        map.on(resizehandler.type, resizehandler.func);
+        map.on(resizehandler.type, resizehandler.func, this);
         this.handlers.push(moveEndHandler, resizehandler);
         if (this.isAnimated()) {
             let zoomhandler = {
