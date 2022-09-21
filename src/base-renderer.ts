@@ -143,7 +143,6 @@ export abstract class BaseRenderer {
         for(let i = 0; i < this.colorFidelity + 1; i++) {
             try {
                 this.unwrappedGradient.push(this.customColorMap(i / this.colorFidelity).rgba());
-
             } catch(e) {
                 console.log(e);
             }

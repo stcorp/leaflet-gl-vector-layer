@@ -10,6 +10,5 @@ export interface LeafletGlVectorLayerOptions {
     plot_type: 'points' | 'grid' | 'swath';
     colorrange?: [number, number];
     pointsize?: number;
-    colormaps?: IXrgbaColor[][];
     colormap?: IXrgbaColor[];
 }

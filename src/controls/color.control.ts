@@ -3,6 +3,9 @@ import { ColorPicker } from './color-picker';
 import { Subject, Subscription } from 'rxjs';
 import { ControlsService } from '../services/controls-service';
 import { IHandler } from '../types/handlers';
+import { ColorService } from '../services/color-service';
+import { IColorWrapper } from '../types/color-slider';
+import { getGradientForColorWrappers } from '../helpers/color-maps';
 
 export class ColorControl {
   private container: HTMLElement;
@@ -27,7 +30,13 @@ export class ColorControl {
       max: ControlsService.selectedLayer?.dataHelper.currentMaxValue
     }
     this.container = L.DomUtil.create('div', 'color-control-container');
-    this.colorPicker = new ColorPicker();
+    this.colorPicker = new ColorPicker(ColorService.selectedColorWrappersSubject);
+    let colorWrappersUpdatedSubscription = this.colorPicker.colorWrappersUpdated$.subscribe((colorWrappers: IColorWrapper[]) => {
+      let gradient = getGradientForColorWrappers(colorWrappers);
+      ColorService.setSelectedColorWrappers(colorWrappers);
+      ColorService.setGradient(gradient);
+    });
+    this.subscriptions.push(colorWrappersUpdatedSubscription);
 
     let header = L.DomUtil.create('div', 'control-section-header', this.container);
     header.innerHTML = 'Control the color map of the layer';
@@ -65,18 +74,6 @@ export class ColorControl {
     minHandler['element']?.addEventListener(minHandler['type'], minHandler['func']);
 
     let colorControlButtonContainer = L.DomUtil.create('div', 'color-control-button-container', this.container);
-
-    let resetButton = L.DomUtil.create('div', 'color-control-button color-reset', colorControlButtonContainer);
-    let resetButtonInner = L.DomUtil.create('div', 'toggle-button-inner color-reset-button-inner', resetButton);
-    resetButtonInner.innerHTML = 'Reset color map';
-
-    let resetHandler = {
-      element: resetButton,
-      func: this.onResetClick.bind(this),
-      type: 'click'
-    }
-    resetHandler['element'].addEventListener(resetHandler['type'], resetHandler['func']);
-    this.handlers.push(resetHandler);
 
     let rangeResetButton = L.DomUtil.create('div', 'color-control-button range-reset', colorControlButtonContainer);
     let rangeResetButtonInner = L.DomUtil.create('div', 'toggle-button-inner range-reset-button-inner', rangeResetButton);

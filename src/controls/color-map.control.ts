@@ -1,9 +1,12 @@
 import * as L from 'leaflet';
 import { guidGenerator } from '../helpers/guid-generator';
-import { Subject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 import { IColorWrapper } from '../types/color-slider';
-import { ColorService } from '../services/color-service';
 import { IHandler } from '../types/handlers';
+import { IXrgbaColor } from '../types/colors';
+import isEqual from 'lodash/isEqual';
+import { colormapToColorWrapper } from '../helpers/color-maps';
+import { ColorService } from '../services/color-service';
 
 
 export interface IColorMapWrapper {
@@ -12,14 +15,27 @@ export interface IColorMapWrapper {
   id: string;
 }
 
+interface IColorMapControlOptions {
+  colormaps?: IXrgbaColor[][],
+  defaultColorMap?: IXrgbaColor[],
+}
+
 export class ColorMapControl {
   private container;
-  private colorMaps: IColorMapWrapper[] = [];
-  private colorMapSubject= new Subject<IColorMapWrapper>();
+  private colorMapSubject= new BehaviorSubject<IColorMapWrapper|undefined>(undefined);
   public colorMap$ = this.colorMapSubject.asObservable();
   private handlers: IHandler[] = [];
-  constructor() {
+  private colorMapWrappers: IColorMapWrapper[] = [];
+
+  constructor(private options?: IColorMapControlOptions ) {
     this.container = L.DomUtil.create('div', 'color-map-container');
+    let header = L.DomUtil.create('div', 'control-section-header', this.container);
+    header.innerHTML = 'Choose from predefined color maps';
+    this.addEventListeners();
+    this.createColorMapElements();
+  }
+
+  private addEventListeners() {
     let containerClickHandler = {
       element: this.container,
       func: (event: any) => {
@@ -27,20 +43,57 @@ export class ColorMapControl {
       },
       type: 'click'
     }
-    this.handlers.push(containerClickHandler);
     containerClickHandler.element.addEventListener(containerClickHandler.type, containerClickHandler.func);
+    this.handlers.push(containerClickHandler);
 
-    let header = L.DomUtil.create('div', 'control-section-header', this.container);
-    header.innerHTML = 'Choose from predefined color maps';
-    let dropdownInner = L.DomUtil.create('div', 'color-map-container-inner', this.container);
-    let colorWrappers = ColorService.getColorWrappers();
+  }
+
+  private createColorMapElements() {
+    let colorMapContainer = L.DomUtil.create('div', 'color-map-container-inner', this.container);
+    let defaultRow = L.DomUtil.create('div', 'default-color-map-row', colorMapContainer);
+
+
+    let indexOfDefault = -1;
+
+    if(this.options?.defaultColorMap) {
+      let defaultColorWrappers = colormapToColorWrapper(this.options?.defaultColorMap);
+      this.createColorMapElement(defaultRow, defaultColorWrappers);
+
+      if(ColorService.globalColorWrappers?.length) {
+        indexOfDefault = ColorService.globalColorWrappers.findIndex((colormap) => {
+          return isEqual(colormap, defaultColorWrappers);
+        })
+      }
+    } else if (ColorService.globalColorWrappers?.length) {
+      this.createColorMapElement(defaultRow, ColorService.globalColorWrappers[0]);
+      indexOfDefault = 0;
+    } else {
+      let defaultColorWrappers = [
+        {
+          value: 0,
+          color: [0, 0, 0, 1]
+        },
+        {
+          value: 1,
+          color: [255, 255, 255, 1]
+        }
+      ]
+      this.createColorMapElement(defaultRow, defaultColorWrappers);
+    }
     let row;
-    for(let i = 0; i < colorWrappers.length; i++) {
+    for(let i = 0; i < ColorService.globalColorWrappers.length; i++) {
       if(i % 2 === 0) {
-        row = L.DomUtil.create('div', 'single-color-map-row', dropdownInner);
+        row = L.DomUtil.create('div', 'single-color-map-row', colorMapContainer);
       }
       if(row) {
-        this.createColorMapElement(row, colorWrappers[i]);
+        let disabled = false;
+        if(i === indexOfDefault) {
+          disabled = true;
+        }
+        this.createColorMapElement(row, ColorService.globalColorWrappers[i], disabled);
+      }
+      if(i === ColorService.globalColorWrappers.length - 1 && i % 2 === 0) {
+        L.DomUtil.create('div', 'single-color-map-row-filler', row);
       }
     }
   }
@@ -49,12 +102,13 @@ export class ColorMapControl {
     return this.container;
   }
 
-  private createColorMapElement(row: HTMLElement, colorWrappers: IColorWrapper[]) {
-    let element = L.DomUtil.create('div', 'single-color-map', row);
+  private createColorMapElement(row: HTMLElement, colorWrappers: IColorWrapper[], isDisabled = false) {
+    let className = 'single-color-map' + (isDisabled ? ' disabled' : '');
+    let element = L.DomUtil.create('div', className, row);
     element.id = guidGenerator();
     element.style.background = this.createGradientString(colorWrappers);
     let wrapper = this.createColorMapWrapper(colorWrappers, element);
-    this.colorMaps.push(wrapper);
+    this.colorMapWrappers.push(wrapper);
     let colorMapClickHandler = {
       element: element,
       func: (event: any) => {
@@ -93,5 +147,6 @@ export class ColorMapControl {
       handler.element.removeEventListener(handler.type, handler.func);
     }
     this.container.replaceChildren();
+    this.colorMapWrappers = [];
   }
 }

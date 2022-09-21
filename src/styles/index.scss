@@ -15,21 +15,15 @@
     background: #f7f7f7;
     flex-wrap: wrap;
 
-    .single-color-map-row {
-      margin: 4px 0;
+    .default-color-map-row {
+      padding: 4px 0 12px 0;
+      margin-bottom: 12px;
       width: 100%;
       height: 30px;
       display: flex;
-      justify-content: center;
       align-items: center;
+      border-bottom: 1px solid #ccc;
 
-
-      .color-map-divider {
-        flex: 0 0 1px;
-        height: 100%;
-        margin: 0 2px;
-        padding: 0 2px;
-      }
 
       .single-color-map {
         flex: 1;
@@ -44,6 +38,51 @@
           opacity: 1;
           border-color: #2d2d2d;
           cursor: pointer;
+        }
+
+      }
+    }
+
+
+
+    .single-color-map-row {
+      margin: 4px 0;
+      width: 100%;
+      height: 30px;
+      display: flex;
+      align-items: center;
+
+
+      .color-map-divider {
+        flex: 0 0 1px;
+        height: 100%;
+        margin: 0 2px;
+        padding: 0 2px;
+      }
+
+      .single-color-map-row-filler {
+        flex: 0 1 50%;
+        margin: 0 3px;
+      }
+
+      .single-color-map {
+        flex: 0 1 50%;
+        height: 100%;
+        border-width: 1px;
+        border-style: solid;
+        border-color: #565656;
+        opacity: 0.7;
+        margin: 0 2px;
+        transition: opacity 0.3s, border-color 0.3s;
+        &:hover {
+          opacity: 1;
+          border-color: #2d2d2d;
+          cursor: pointer;
+        }
+
+        &.disabled {
+          pointer-events: none;
+          opacity: 0.2;
         }
 
       }

@@ -1,15 +1,14 @@
 import { IColorSlider, IColorWrapper } from '../types/color-slider';
-import chroma from 'chroma-js';
 import { guidGenerator } from '../helpers/guid-generator';
 import * as L from 'leaflet';
 import { IColorMapWrapper } from './color-map.control';
 import { ColorService } from '../services/color-service';
 import { IHandler } from '../types/handlers';
-import { Subscription } from 'rxjs';
+import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
+import { getGradientForColorWrappers } from '../helpers/color-maps';
 export class ColorPicker {
-  public colorWrappers: IColorWrapper[] = [];
-  public colorSliders: IColorSlider[] = [];
-  public gradient: chroma.Scale;
+
+  private colorWrappersUpdateSubject = new Subject<IColorWrapper[]>();
   private innerContainer: HTMLElement;
   private colorPickerContainer: HTMLElement;
   private gradientContainer: HTMLElement;
@@ -23,31 +22,40 @@ export class ColorPicker {
   private previousStopColor: number[]|null|undefined;
   private handlers: IHandler[] = [];
   private subscriptions: Subscription[] = [];
+  public colorWrappers: IColorWrapper[] = [];
+  public colorSliders: IColorSlider[] = [];
+  public colorWrappersUpdated$ = this.colorWrappersUpdateSubject.asObservable();
 
-  constructor() {
-    let colorMapSubscription = ColorService.colorMapSubject.subscribe((colorMapWrapper: IColorMapWrapper) => {
-      this.onColorMapChange(colorMapWrapper);
+  constructor(colorWrapperObservable: BehaviorSubject<IColorWrapper[]>) {
+    colorWrapperObservable.subscribe((colorWrappers: IColorWrapper[]) => {
+      if(colorWrappers.length && this.innerContainer) {
+        this.colorWrappers = colorWrappers;
+        this.onColorWrappersChanged();
+        this.updateGradientElement();
+      }
     });
-    let colorPickerSubscription = ColorService.colorPickerSubject.subscribe((color: any) => {
-      this.onColorPickerChange(color);
-    });
-    let resetColorSubscription = ColorService.resetColorMapSubject.subscribe(() => {
-      this.reset();
+    let selectedColorChangedSubscription = ColorService.selectedColorChangedSubject.subscribe((color: any) => {
+      this.onSelectedColorChange(color);
     });
     let colorPickerDialogSubscription = ColorService.colorPickerDialogSubject.subscribe(data => {
       this.onColorPickerDialogClose(data.isReset);
     });
-    let currentGradientSubscription = ColorService.currentGradientSubject.subscribe((gradient: chroma.Scale) => {
-      this.gradient = gradient;
-      this.updateGradientElement();
-    });
 
-    this.subscriptions.push(colorMapSubscription);
-    this.subscriptions.push(colorPickerSubscription);
-    this.subscriptions.push(resetColorSubscription);
+    this.subscriptions.push(selectedColorChangedSubscription);
     this.subscriptions.push(colorPickerDialogSubscription);
-    this.subscriptions.push(currentGradientSubscription);
 
+  }
+
+  private onColorWrappersChanged() {
+    this.deleteExistingSliders();
+    this.colorSliders = [];
+    this.selectedColorSlider = null;
+    for(let i = 0; i < this.colorWrappers.length; i++) {
+      this.insertColorSlider(this.colorWrappers[i], i);
+    }
+    this.selectColorSlider(this.colorSliders[0]);
+    this.colorWrappersUpdateSubject.next(this.colorWrappers);
+    this.updateGradientElement();
   }
 
 
@@ -59,53 +67,8 @@ export class ColorPicker {
     this.gradientStopDeleteButton = L.DomUtil.create('div', 'gradient-stop-delete-button disabled', this.colorInputContainer)
     this.gradientContainer = L.DomUtil.create('div', 'gradient-container', this.colorPickerContainer);
     this.gradientElement = L.DomUtil.create('div', 'gradient-element', this.gradientContainer);
-    this.initColorWrappers();
-    setTimeout(() => {
-      let currentGradient = ColorService.getCurrentGradient();
-      if(currentGradient) {
-        this.gradient = currentGradient;
-      }
-      this.initColorSliders();
-      this.addEventListeners();
-      this.updateGradientElement();
-    })
-
+    this.addEventListeners();
     return this.innerContainer;
-  }
-
-  public initColorWrappers(isDefault = false) {
-    if(isDefault) {
-      this.colorWrappers = ColorService.getDefaultColorWrappers();
-    } else {
-      this.colorWrappers = ColorService.getCurrentColorWrappers();
-    }
-    ColorService.updateCurrentColorWrappers(this.colorWrappers);
-
-  }
-
-  public initColorSliders() {
-    for(let i = 0; i < this.colorWrappers.length; i++) {
-      this.insertColorSlider(this.colorWrappers[i], i);
-    }
-    this.selectColorSlider(this.colorSliders[0]);
-  }
-
-  public onColorMapChange(colorMapWrapper: IColorMapWrapper) {
-    this.deleteExistingSliders();
-    this.colorWrappers = [];
-    this.colorSliders = [];
-    this.selectedColorSlider = null;
-    for(let i = 0; i < colorMapWrapper.colorWrappers.length; i++) {
-      let wrapper = colorMapWrapper.colorWrappers[i];
-      let newColorWrapper = {
-        color: wrapper.color,
-        value: wrapper.value
-      };
-      this.colorWrappers.splice(i, 0, newColorWrapper);
-      this.insertColorSlider(newColorWrapper, i);
-    }
-    this.selectColorSlider(this.colorSliders[0]);
-    ColorService.updateCurrentColorWrappers(this.colorWrappers);
   }
 
   private addEventListeners() {
@@ -166,9 +129,8 @@ export class ColorPicker {
     function onDocumentMouseUp(event: any) {
       if(self.draggedSlider) {
         self.draggedSlider = null;
-        ColorService.updateCurrentColorWrappers(self.colorWrappers);
+        self.colorWrappersUpdateSubject.next(self.colorWrappers);
       }
-
     }
 
     function onDocumentMouseMove(event: any) {
@@ -177,7 +139,7 @@ export class ColorPicker {
       } else {
         let bbox = self.gradientContainer!.getBoundingClientRect();
         let left = Math.max(Math.min(event.clientX - bbox.x - (self.COLOR_SLIDER_WIDTH / 2), self.gradientContainer!.clientWidth - (self.COLOR_SLIDER_WIDTH / 2)), -(self.COLOR_SLIDER_WIDTH / 2));
-        let newPercentage = Math.max((left + -self.COLOR_SLIDER_WIDTH/2) / self.gradientContainer!.clientWidth, 0);
+        let newPercentage = Math.max((left) / self.gradientContainer!.clientWidth, 0);
         self.draggedSlider.style.left = left + 'px';
         self.selectedColorSlider.colorWrapper.value = newPercentage;
         self.colorWrappers = self.colorWrappers.sort((a, b) => {
@@ -197,7 +159,7 @@ export class ColorPicker {
     }
   }
 
-  public onColorPickerChange(color: any) {
+  public onSelectedColorChange(color: any) {
     let colorArray = [color.rgba.r, color.rgba.g, color.rgba.b, color.rgba.a];
     if(this.selectedColorSlider) {
       this.selectedColorSlider.colorWrapper.color = colorArray;
@@ -206,14 +168,6 @@ export class ColorPicker {
     this.colorInput!.style.background = colorString;
     let innerSliderElement = this.selectedColorSlider!.slider.querySelector('.color-slider-inner') as HTMLElement;
     innerSliderElement!.style.background = colorString;
-  }
-
-  public reset() {
-    this.deleteExistingSliders();
-    this.colorWrappers = [];
-    this.colorSliders = [];
-    this.initColorWrappers(true);
-    this.initColorSliders();
     this.updateGradientElement();
   }
 
@@ -225,20 +179,24 @@ export class ColorPicker {
         this.colorInput.style.background = colorString;
         let innerSliderElement = this.selectedColorSlider.slider.querySelector('.color-slider-inner') as HTMLElement;
         innerSliderElement.style.background = colorString;
+        this.updateGradientElement();
       }
     } else {
-      ColorService.updateCurrentColorWrappers(this.colorWrappers);
+      this.colorWrappersUpdateSubject.next(this.colorWrappers);
     }
   }
 
 
 
   private deleteExistingSliders() {
-    let sliders = this.innerContainer.querySelectorAll('.color-slider-wrapper');
-    for (let i = 0; i < sliders.length; i++) {
-      sliders[i].remove();
+    if(this.innerContainer) {
+      let sliders = this.innerContainer.querySelectorAll('.color-slider-wrapper');
+      for (let i = 0; i < sliders.length; i++) {
+        sliders[i].remove();
+      }
+      this.gradientStopDeleteButton.classList.add('disabled');
     }
-    this.gradientStopDeleteButton.classList.add('disabled');
+
   }
 
   private deleteGradientSlider(slider: IColorSlider) {
@@ -258,11 +216,12 @@ export class ColorPicker {
         this.gradientStopDeleteButton.classList.add('disabled');
       }
     }
-    ColorService.updateCurrentColorWrappers(this.colorWrappers);
+    this.colorWrappersUpdateSubject.next(this.colorWrappers);
+    this.updateGradientElement();
   }
 
   private updateGradientElement() {
-    if(!this.gradientElement || !this.gradient) {
+    if(!this.gradientElement) {
       return;
     }
     let linearGradientString = 'linear-gradient(to right';
@@ -288,7 +247,8 @@ export class ColorPicker {
       }
     })
     index += 1;
-    let colorAtPosition = this.gradient!(percentage);
+    let gradient = getGradientForColorWrappers(this.colorWrappers);
+    let colorAtPosition = gradient(percentage);
     let color = colorAtPosition.rgba();
     let newColorWrapper = {
       color,
@@ -301,7 +261,7 @@ export class ColorPicker {
     if(this.colorSliders.length > 2) {
       this.gradientStopDeleteButton.classList.remove('disabled');
     }
-    ColorService.updateCurrentColorWrappers(this.colorWrappers);
+    this.colorWrappersUpdateSubject.next(this.colorWrappers);
   }
 
   private insertColorSlider(colorWrapper: IColorWrapper, index: number) {

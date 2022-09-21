@@ -22,7 +22,7 @@ import { ControlsService, ILimitsSubject } from './services/controls-service';
 import chroma from 'chroma-js';
 import { IXrgbaColor } from './types/colors';
 import { ColorService } from './services/color-service';
-import { Subscription } from 'rxjs';
+import { filter, Subscription } from 'rxjs';
 import { IHandler } from "./types/handlers";
 export interface ExtendedOptions extends L.GridLayerOptions {
     leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions
@@ -133,7 +133,9 @@ export class LeafletGlVectorLayer extends L.GridLayer {
 
         this._reset();
         this.renderer.bindBuffers();
-        let gradientSubscription = ColorService.gradientSubject.subscribe(data => {
+        let gradientSubscription = ColorService.gradientSubject.pipe(filter(data => {
+            return data.layer.id === this.id;
+        })).subscribe(data => {
             this.currentGradient = data.gradient;
             this.updateColors(data);
         })

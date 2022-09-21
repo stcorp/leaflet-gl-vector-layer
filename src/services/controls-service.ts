@@ -48,14 +48,14 @@ export const ControlsService: IControlsService = {
 
   selectLayer: (layer: LeafletGlVectorLayer) => {
     ControlsService.selectedLayer = layer;
-    ColorService.onLayerSelected();
     ControlsService.selectLayerSubject.next(layer);
+    ColorService.selectLayer(layer);
   },
   addLayer: (layer: LeafletGlVectorLayer) => {
-    ColorService.initializeLayerColors(layer);
     ControlsService.addLayerSubject.next(layer);
     ControlsService.currentLayers.push(layer);
     ControlsService.currentLayerSubject.next(ControlsService.currentLayers);
+    ColorService.addLayer(layer);
   },
   showLayer: (layer: LeafletGlVectorLayer) => {
     ControlsService.showLayerSubject.next(layer);

@@ -3,13 +3,23 @@ import * as L from 'leaflet';
 import { ControlsService } from './services/controls-service';
 import { LeafletGlVectorLayerControls } from './controls/leaflet-gl-vector-layer-controls';
 import { ColorService } from './services/color-service';
+import { IXrgbaColor } from './types/colors';
+import { colormapToColorWrapper } from './helpers/color-maps';
+
+export interface LeafletGlVectorLayerWrapperOptions {
+  colormaps?: IXrgbaColor[][];
+}
+
 export class LeafletGlVectorLayerWrapper extends L.Layer {
 
   private layers: LeafletGlVectorLayer[] = [];
   public controls: LeafletGlVectorLayerControls|undefined;
   public map: L.Map;
-  constructor() {
+  constructor(private options: LeafletGlVectorLayerWrapperOptions) {
     super();
+    if(this.options.colormaps) {
+      ColorService.setGlobalColorWrappers(this.options.colormaps.map(colormap => colormapToColorWrapper(colormap)));
+    }
     window.onbeforeunload = () => {
 
       ControlsService.cleanUp();
@@ -38,7 +48,7 @@ export class LeafletGlVectorLayerWrapper extends L.Layer {
 
   public addTo(map: L.Map) {
     this.map = map;
-    this.controls = new LeafletGlVectorLayerControls();
+    this.controls = new LeafletGlVectorLayerControls({colormaps: this.options.colormaps});
     this.controls.addTo(map);
     return this;
   }

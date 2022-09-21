@@ -9,6 +9,13 @@ import { LayerControl } from './layer.control';
 import { ColorPickerDialogControl } from './color-picker-dialog.control';
 import { ColorService } from '../services/color-service';
 import { IroColor } from '@irojs/iro-core/dist/color';
+import { LeafletGlVectorLayerWrapperOptions } from '../leaflet-gl-vector-layer-wrapper';
+import { IXrgbaColor } from '../types/colors';
+
+interface ExtendedControlOptions extends L.ControlOptions {
+  colormaps?: IXrgbaColor[][];
+}
+
 export class LeafletGlVectorLayerControls extends L.Control {
   private controlWrapperOuterContainer: HTMLElement;
   private controlWrapperInnerContainer: HTMLElement;
@@ -28,7 +35,7 @@ export class LeafletGlVectorLayerControls extends L.Control {
   public map: L.Map|undefined;
   private subscriptions: Subscription[] = [];
 
-  constructor() {
+  constructor(public options: ExtendedControlOptions) {
     super();
 
     let colorSliderSubscription = ColorService.selectedColorSliderSubject.subscribe((colorSlider: IColorSlider) => {
@@ -159,8 +166,11 @@ export class LeafletGlVectorLayerControls extends L.Control {
   }
 
   private createColorMapControl() {
-    this.colorMapControl = new ColorMapControl();
-    this.colorMapControl.colorMap$.subscribe((colorMap: IColorMapWrapper) => {
+    this.colorMapControl = new ColorMapControl({
+      colormaps: this.options.colormaps,
+      defaultColorMap: ControlsService.selectedLayer?.options.leafletGlVectorLayerOptions.colormap
+    });
+    this.colorMapControl.colorMap$.subscribe((colorMap: IColorMapWrapper|undefined) => {
       ColorService.selectColorMap(colorMap);
     });
 
