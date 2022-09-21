@@ -32,7 +32,7 @@ export class PointsRenderer extends BaseRenderer {
             this.vertexValues.push(value);
             let adjustedValue = (value + this.dataHelper.absoluteCurrentMinValue) / (this.dataHelper.currentMaxValue + this.dataHelper.absoluteCurrentMinValue);
             let color = this.unwrappedGradient[Math.floor(adjustedValue * this.colorFidelity)];
-            this.vertices.push(pixel.x, pixel.y, color[0], color[1], color[2], color[3]);
+            this.vertices.push(pixel.x, pixel.y, color[0]/255, color[1]/255, color[2]/255, color[3]);
         }
         this.numPoints = this.vertices.length / 6;
         callback();
