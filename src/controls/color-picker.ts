@@ -6,6 +6,8 @@ import { ColorService } from '../services/color-service';
 import { IHandler } from '../types/handlers';
 import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
 import { getGradientForColorWrappers } from '../helpers/color-maps';
+import { IroColor } from '@irojs/iro-core/dist/color';
+import { IRGBA } from '../types/colors';
 export class ColorPicker {
 
   private colorWrappersUpdateSubject = new Subject<IColorWrapper[]>();
@@ -19,7 +21,7 @@ export class ColorPicker {
   private draggedSlider: HTMLElement|null;
   private selectedColorSlider: IColorSlider|null;
   private COLOR_SLIDER_WIDTH: number = 10;
-  private previousStopColor: number[]|null|undefined;
+  private previousStopColor: IRGBA|null|undefined;
   private handlers: IHandler[] = [];
   private subscriptions: Subscription[] = [];
   public colorWrappers: IColorWrapper[] = [];
@@ -159,8 +161,8 @@ export class ColorPicker {
     }
   }
 
-  public onSelectedColorChange(color: any) {
-    let colorArray = [color.rgba.r, color.rgba.g, color.rgba.b, color.rgba.a];
+  public onSelectedColorChange(color: IroColor) {
+    let colorArray = [color.rgba.r, color.rgba.g, color.rgba.b, color.rgba.a] as IRGBA;
     if(this.selectedColorSlider) {
       this.selectedColorSlider.colorWrapper.color = colorArray;
     }
