@@ -44,7 +44,6 @@ export class LeafletGlVectorLayerWrapper extends L.Layer {
       this.controls.cleanUp();
     }
     this.controls = undefined;
-    console.log(this.layers);
     if(this.layers.length) {
       for(let layer of this.layers) {
         layer.cleanUp();

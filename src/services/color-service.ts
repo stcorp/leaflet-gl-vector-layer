@@ -54,7 +54,6 @@ export const ColorService: IColorService = {
   },
   globalColorWrappers: [],
   setGlobalColorWrappers(colorWrappers: IColorWrapper[][]) {
-    console.log(colorWrappers);
     this.globalColorWrappers = colorWrappers;
   },
   setSelectedColorWrappers(colorWrappers: IColorWrapper[]) {
