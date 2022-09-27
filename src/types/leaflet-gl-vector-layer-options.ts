@@ -1,4 +1,4 @@
-import { IXrgbaColor } from './colors';
+import { IColor, IXrgbaColor } from './colors';
 
 
 export interface LeafletGlVectorLayerOptions {
@@ -10,5 +10,9 @@ export interface LeafletGlVectorLayerOptions {
     plot_type: 'points' | 'grid' | 'swath';
     colorrange?: [number, number];
     pointsize?: number;
+    colormap?: IColor[];
+}
+
+export interface LeafletGlVectorLayerProcessedOptions extends LeafletGlVectorLayerOptions {
     colormap?: IXrgbaColor[];
 }

@@ -3,11 +3,12 @@ import * as L from 'leaflet';
 import { ControlsService } from './services/controls-service';
 import { LeafletGlVectorLayerControls } from './controls/leaflet-gl-vector-layer-controls';
 import { ColorService } from './services/color-service';
-import { IXrgbaColor } from './types/colors';
+import { IRGB, IRGBA, IXrgbaColor } from './types/colors';
 import { colormapToColorWrapper } from './helpers/color-maps';
+import { colormapsToXrgbaColormaps } from './helpers/color-transformers';
 
 export interface LeafletGlVectorLayerWrapperOptions {
-  colormaps?: IXrgbaColor[][];
+  colormaps?: (IXrgbaColor[][])|(IRGBA[][])|(IRGB[][]);
 }
 
 export class LeafletGlVectorLayerWrapper extends L.Layer {
@@ -15,10 +16,14 @@ export class LeafletGlVectorLayerWrapper extends L.Layer {
   private layers: LeafletGlVectorLayer[] = [];
   public controls: LeafletGlVectorLayerControls|undefined;
   public map: L.Map;
+  private xrgbaColorMaps: IXrgbaColor[][] = [];
   constructor(private options: LeafletGlVectorLayerWrapperOptions) {
     super();
-    if(this.options.colormaps) {
-      ColorService.setGlobalColorWrappers(this.options.colormaps.map(colormap => colormapToColorWrapper(colormap)));
+    let colormaps = this.options.colormaps;
+    if(colormaps && colormaps.length > 0 && colormaps[0].length > 0) {
+      colormaps = colormapsToXrgbaColormaps(colormaps);
+      this.xrgbaColorMaps = colormaps;
+      ColorService.setGlobalColorWrappers(this.xrgbaColorMaps.map((colormap: IXrgbaColor[]) => colormapToColorWrapper(colormap)));
     }
     window.onbeforeunload = () => {
 
@@ -48,7 +53,7 @@ export class LeafletGlVectorLayerWrapper extends L.Layer {
 
   public addTo(map: L.Map) {
     this.map = map;
-    this.controls = new LeafletGlVectorLayerControls({colormaps: this.options.colormaps});
+    this.controls = new LeafletGlVectorLayerControls({colormaps: this.xrgbaColorMaps});
     this.controls.addTo(map);
     return this;
   }

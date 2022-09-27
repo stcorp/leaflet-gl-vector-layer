@@ -54,11 +54,10 @@ export class ColorMapControl {
 
 
     let indexOfDefault = -1;
-
+    let defaultColorWrappers: IColorWrapper[];
     if(this.options?.defaultColorMap) {
-      let defaultColorWrappers = colormapToColorWrapper(this.options?.defaultColorMap);
+      defaultColorWrappers = colormapToColorWrapper(this.options?.defaultColorMap);
       this.createColorMapElement(defaultRow, defaultColorWrappers);
-
       if(ColorService.globalColorWrappers?.length) {
         indexOfDefault = ColorService.globalColorWrappers.findIndex((colormap) => {
           return isEqual(colormap, defaultColorWrappers);
@@ -68,7 +67,7 @@ export class ColorMapControl {
       this.createColorMapElement(defaultRow, ColorService.globalColorWrappers[0]);
       indexOfDefault = 0;
     } else {
-      let defaultColorWrappers = [
+      defaultColorWrappers = [
         {
           value: 0,
           color: [0, 0, 0, 1]

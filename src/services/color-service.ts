@@ -62,8 +62,9 @@ export const ColorService: IColorService = {
     }
   },
   addLayer(layer: LeafletGlVectorLayer) {
-    if(layer.options.leafletGlVectorLayerOptions.colormap) {
-      this.selectedColorWrappers[layer.id] = colormapToColorWrapper(layer.options.leafletGlVectorLayerOptions.colormap);
+    let colormap = ControlsService.getOptions(layer.id)?.colormap;
+    if(colormap) {
+      this.selectedColorWrappers[layer.id] = colormapToColorWrapper(colormap);
     } else {
       this.selectedColorWrappers[layer.id] = ColorService.globalColorWrappers[0];
     }

@@ -9,7 +9,6 @@ import { LayerControl } from './layer.control';
 import { ColorPickerDialogControl } from './color-picker-dialog.control';
 import { ColorService } from '../services/color-service';
 import { IroColor } from '@irojs/iro-core/dist/color';
-import { LeafletGlVectorLayerWrapperOptions } from '../leaflet-gl-vector-layer-wrapper';
 import { IXrgbaColor } from '../types/colors';
 
 interface ExtendedControlOptions extends L.ControlOptions {
@@ -166,9 +165,10 @@ export class LeafletGlVectorLayerControls extends L.Control {
   }
 
   private createColorMapControl() {
+    let defaultColorMap = ControlsService.getOptions()?.colormap;
     this.colorMapControl = new ColorMapControl({
       colormaps: this.options.colormaps,
-      defaultColorMap: ControlsService.selectedLayer?.options.leafletGlVectorLayerOptions.colormap
+      defaultColorMap
     });
     this.colorMapControl.colorMap$.subscribe((colorMap: IColorMapWrapper|undefined) => {
       ColorService.selectColorMap(colorMap);
@@ -190,10 +190,6 @@ export class LeafletGlVectorLayerControls extends L.Control {
         console.warn('No layer selected, limits could not be set');
       }
 
-    });
-    this.colorControl.colorMapReset$.subscribe(() => {
-      this.colorPickerDialogControl.hide();
-      this.resetColorMap();
     });
     this.colorControl.limits$.subscribe((data: {type: 'min'|'max', value: number}) => {
       if(ControlsService.selectedLayer) {
@@ -226,9 +222,5 @@ export class LeafletGlVectorLayerControls extends L.Control {
       this.controlWrapperOuterContainer.replaceChildren();
       this.controlWrapperOuterContainer.remove();
       this.toggleButton.remove();
-  }
-
-  private resetColorMap() {
-    ColorService.resetColorMap();
   }
 }

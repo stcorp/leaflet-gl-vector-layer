@@ -1,5 +1,5 @@
 import {getColor} from "./color-map-names";
-import { IXrgbaColor } from '../types/colors';
+import { IRGBA, IXrgbaColor } from '../types/colors';
 import { IColorWrapper } from '../types/color-slider';
 import chroma from 'chroma-js';
 

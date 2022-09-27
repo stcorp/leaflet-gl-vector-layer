@@ -1,6 +1,7 @@
 import { BehaviorSubject, Subject } from 'rxjs';
-import { ExtendedOptions, LeafletGlVectorLayer } from '../leaflet-gl-vector-layer';
+import { LeafletGlVectorLayer } from '../leaflet-gl-vector-layer';
 import { ColorService } from './color-service';
+import { LeafletGlVectorLayerProcessedOptions } from '../types/leaflet-gl-vector-layer-options';
 
 export interface IGradientSubject {
   gradient: chroma.Scale;
@@ -27,11 +28,11 @@ export interface IControlsService {
   cleanUp: () => void;
   currentLayers: LeafletGlVectorLayer[];
   options: {
-    [x: string]: ExtendedOptions
+    [x: string]: LeafletGlVectorLayerProcessedOptions
   };
-  setOptions: (layerId: string, options: ExtendedOptions) => void;
+  setOptions: (layerId: string, options: LeafletGlVectorLayerProcessedOptions) => void;
   getCurrentLayers: () => LeafletGlVectorLayer[];
-  getOptions: (layerId: string) => ExtendedOptions;
+  getOptions: (layerId?: string) => LeafletGlVectorLayerProcessedOptions|undefined;
 
 }
 
@@ -66,10 +67,17 @@ export const ControlsService: IControlsService = {
   setLimits: (limits: ILimitsSubject) => {
     ControlsService.limitsSubject.next(limits);
   },
-  setOptions: (layerId: string, newOptions: ExtendedOptions) => {
+  setOptions: (layerId: string, newOptions: LeafletGlVectorLayerProcessedOptions) => {
     ControlsService.options[layerId] = newOptions;
   },
-  getOptions: (layerId: string) => {
+  getOptions: (layerId?: string) => {
+    if(!layerId) {
+      if(ControlsService.selectedLayer) {
+        return ControlsService.options[ControlsService.selectedLayer.id];
+      } else {
+        return undefined;
+      }
+    }
     return ControlsService.options[layerId];
   },
   getCurrentLayers: (): LeafletGlVectorLayer[] => {

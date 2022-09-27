@@ -17,16 +17,21 @@ import {SwathRenderer} from "./swath-renderer";
 import {DataHelper} from "./helpers/data-helper";
 import {LeafletGlVectorLayerWrapper} from "./leaflet-gl-vector-layer-wrapper";
 import {guidGenerator} from "./helpers/guid-generator";
-import {LeafletGlVectorLayerOptions} from "./types/leaflet-gl-vector-layer-options";
+import {
+    LeafletGlVectorLayerOptions,
+    LeafletGlVectorLayerProcessedOptions
+} from "./types/leaflet-gl-vector-layer-options";
 import { ControlsService, ILimitsSubject } from './services/controls-service';
 import chroma from 'chroma-js';
 import { IXrgbaColor } from './types/colors';
 import { ColorService } from './services/color-service';
 import { filter, Subscription } from 'rxjs';
 import { IHandler } from "./types/handlers";
+import { colormapToXrgbaColormap } from './helpers/color-transformers';
 export interface ExtendedOptions extends L.GridLayerOptions {
     leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions
 }
+
 export class LeafletGlVectorLayer extends L.GridLayer {
     public canvas: HTMLCanvasElement;
     public _map: any;
@@ -42,8 +47,17 @@ export class LeafletGlVectorLayer extends L.GridLayer {
     private handlers: any[] = [];
     constructor(newOptions: ExtendedOptions) {
         super(newOptions);
+        let colormap = newOptions.leafletGlVectorLayerOptions.colormap;
+        let xrgbaColormap;
+        if(colormap && colormap.length > 0) {
+            xrgbaColormap = colormapToXrgbaColormap(colormap) as IXrgbaColor[];
+        }
         this.id = guidGenerator()
-        ControlsService.setOptions(this.id, newOptions);
+        let leafletGlVectorLayerOptions: LeafletGlVectorLayerProcessedOptions = {
+            ...newOptions.leafletGlVectorLayerOptions,
+            colormap: xrgbaColormap
+        }
+        ControlsService.setOptions(this.id, leafletGlVectorLayerOptions);
         setOptions(this, {...this.options, leafletGlVectorLayerOptions: newOptions.leafletGlVectorLayerOptions});
     }
 
