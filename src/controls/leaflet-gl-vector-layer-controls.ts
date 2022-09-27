@@ -42,7 +42,7 @@ export class LeafletGlVectorLayerControls extends L.Control {
     })
 
     let selectlayerSubscription = ControlsService.selectLayerSubject.subscribe((layer: LeafletGlVectorLayer) => {
-      this.onLayerSelected(layer);
+      this.onLayerSelected();
     });
     let addLayerSubscription = ControlsService.addLayerSubject.subscribe((layer: LeafletGlVectorLayer) => {
       this.onLayerAdded(layer);
@@ -74,6 +74,7 @@ export class LeafletGlVectorLayerControls extends L.Control {
     this.toggleButtonInner = L.DomUtil.create('div', 'toggle-button-inner main-toggle-inner', this.toggleButton);
     this.createColorDialogControl();
     this.addStaticEventListeners();
+    this.onLayerSelected();
     return this;
   }
 
@@ -107,7 +108,7 @@ export class LeafletGlVectorLayerControls extends L.Control {
     return `rgba(${colorArray.join(',')})`;
   }
 
-  public onLayerSelected(layer: LeafletGlVectorLayer) {
+  public onLayerSelected() {
     if(this.colorPickerSubscription) {
       this.colorPickerSubscription.unsubscribe();
     }

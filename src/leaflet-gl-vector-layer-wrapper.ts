@@ -19,31 +19,44 @@ export class LeafletGlVectorLayerWrapper extends L.Layer {
   private xrgbaColorMaps: IXrgbaColor[][] = [];
   constructor(private options: LeafletGlVectorLayerWrapperOptions) {
     super();
+    this.cleanUp();
     let colormaps = this.options.colormaps;
     if(colormaps && colormaps.length > 0 && colormaps[0].length > 0) {
       colormaps = colormapsToXrgbaColormaps(colormaps);
       this.xrgbaColorMaps = colormaps;
-      ColorService.setGlobalColorWrappers(this.xrgbaColorMaps.map((colormap: IXrgbaColor[]) => colormapToColorWrapper(colormap)));
+    } else {
+      this.xrgbaColorMaps = [[
+        [0, 0, 0, 0, 1],
+        [1, 255, 255, 255, 1]
+      ]] as IXrgbaColor[][];
     }
+    ColorService.setGlobalColorWrappers(this.xrgbaColorMaps.map((colormap: IXrgbaColor[]) => colormapToColorWrapper(colormap)));
     window.onbeforeunload = () => {
+      this.cleanUp(true);
+    }
+  }
 
-      ControlsService.cleanUp();
-      ColorService.cleanUp();
-      if(this.controls) {
-        this.controls.cleanUp();
-      }
-      this.controls = undefined;
-      if(this.layers.length) {
-        for(let layer of this.layers) {
-          layer.cleanUp();
-        }
-        this.layers = [];
-      }
+  private cleanUp(clearSubjects: boolean = false) {
 
+    ControlsService.cleanUp(clearSubjects);
+    ColorService.cleanUp(clearSubjects);
+    if(this.controls) {
+      this.controls.cleanUp();
+    }
+    this.controls = undefined;
+    console.log(this.layers);
+    if(this.layers.length) {
+      for(let layer of this.layers) {
+        layer.cleanUp();
+      }
+      this.layers = [];
+    }
+
+    if(this.map) {
       this.map.getContainer()?.replaceChildren();
       this.map.remove();
-
     }
+
   }
 
   public onAdd(map: L.Map) {

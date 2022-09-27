@@ -16,7 +16,7 @@ export interface IColorService {
   selectColorSlider: (colorSlider: IColorSlider) => void;
   addLayer: (layer: LeafletGlVectorLayer) => void;
   selectLayer: (layer: LeafletGlVectorLayer) => void;
-  cleanUp: () => void;
+  cleanUp: (clearSubjects: boolean) => void;
   setGlobalColorWrappers: (colorWrappers: IColorWrapper[][]) => void;
   setSelectedColorWrappers: (colorWrappers: IColorWrapper[]) => void;
   selectedColorChangedSubject: Subject<any>;
@@ -54,6 +54,7 @@ export const ColorService: IColorService = {
   },
   globalColorWrappers: [],
   setGlobalColorWrappers(colorWrappers: IColorWrapper[][]) {
+    console.log(colorWrappers);
     this.globalColorWrappers = colorWrappers;
   },
   setSelectedColorWrappers(colorWrappers: IColorWrapper[]) {
@@ -66,7 +67,7 @@ export const ColorService: IColorService = {
     if(colormap) {
       this.selectedColorWrappers[layer.id] = colormapToColorWrapper(colormap);
     } else {
-      this.selectedColorWrappers[layer.id] = ColorService.globalColorWrappers[0];
+      this.selectedColorWrappers[layer.id] = cloneDeep(ColorService.globalColorWrappers[0]);
     }
     this.gradients[layer.id] = getGradientForColorWrappers(this.selectedColorWrappers[layer.id]);
     this.gradientSubject.next({
@@ -117,14 +118,16 @@ export const ColorService: IColorService = {
       console.warn('No layer selected or given when setting gradient');
     }
   },
-  cleanUp: () => {
+  cleanUp: (clearSubjects: boolean = false) => {
     ColorService.gradients = {};
-    ColorService.colorMapSubject.complete();
-    ColorService.selectedColorChangedSubject.complete();
-    ColorService.colorPickerDialogSubject.complete();
-    ColorService.currentGradientSubject.complete();
-    ColorService.gradientSubject.complete();
-    ColorService.selectedColorSliderSubject.complete();
+    if(clearSubjects) {
+      ColorService.colorMapSubject.complete();
+      ColorService.selectedColorChangedSubject.complete();
+      ColorService.colorPickerDialogSubject.complete();
+      ColorService.currentGradientSubject.complete();
+      ColorService.gradientSubject.complete();
+      ColorService.selectedColorSliderSubject.complete();
+    }
   },
 }
 

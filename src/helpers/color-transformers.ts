@@ -1,4 +1,5 @@
 import { IColor, IRGB, IRGBA, IXrgbaColor } from '../types/colors';
+import { IColorWrapper } from '../types/color-slider';
 
 export function colormapToXrgbaColormap(colormap: IColor[]): IXrgbaColor[] {
   if(colormap[0]?.length === 3) {
@@ -16,4 +17,10 @@ export function colormapToXrgbaColormap(colormap: IColor[]): IXrgbaColor[] {
 
 export function colormapsToXrgbaColormaps(colormaps: IColor[][]): IXrgbaColor[][] {
   return colormaps.map((colormap: IColor[]) => colormapToXrgbaColormap(colormap));
+}
+
+export function colorWrappersToXrgbaColormap(colorWrappers: IColorWrapper[]): IXrgbaColor[] {
+  return colorWrappers.map((colorWrapper: IColorWrapper, index: number) => {
+    return [colorWrapper.value, colorWrapper.color[0], colorWrapper.color[1], colorWrapper.color[2], colorWrapper.color[3]] as IXrgbaColor;
+  });
 }

@@ -25,7 +25,7 @@ export interface IControlsService {
   showLayer: (layer: LeafletGlVectorLayer) => void;
   hideLayer: (layer: LeafletGlVectorLayer) => void;
   setLimits: (limits: ILimitsSubject) => void;
-  cleanUp: () => void;
+  cleanUp: (clearSubjects: boolean) => void;
   currentLayers: LeafletGlVectorLayer[];
   options: {
     [x: string]: LeafletGlVectorLayerProcessedOptions
@@ -83,14 +83,17 @@ export const ControlsService: IControlsService = {
   getCurrentLayers: (): LeafletGlVectorLayer[] => {
     return ControlsService.currentLayers;
   },
-  cleanUp: () => {
-    ControlsService.currentLayerSubject.next([]);
-    ControlsService.currentLayerSubject.complete();
-    ControlsService.selectLayerSubject.complete();
-    ControlsService.addLayerSubject.complete();
-    ControlsService.limitsSubject.complete();
-    ControlsService.showLayerSubject.complete();
-    ControlsService.hideLayerSubject.complete();
+  cleanUp: (clearSubjects: boolean = false) => {
+    if(clearSubjects) {
+      ControlsService.currentLayerSubject.next([]);
+      ControlsService.currentLayerSubject.complete();
+      ControlsService.selectLayerSubject.complete();
+      ControlsService.addLayerSubject.complete();
+      ControlsService.limitsSubject.complete();
+      ControlsService.showLayerSubject.complete();
+      ControlsService.hideLayerSubject.complete();
+    }
+
     ControlsService.selectedLayer = undefined;
     ControlsService.currentLayers = [];
   }
