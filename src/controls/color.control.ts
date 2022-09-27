@@ -14,14 +14,12 @@ export class ColorControl {
     type: 'min'|'max';
     value: number;
   }>();
-  private colorMapResetSubject = new Subject<boolean>();
   private dataRangeResetSubject = new Subject<boolean>();
   private rangeMinInput: HTMLInputElement;
   private rangeMaxInput: HTMLInputElement;
   private handlers: IHandler[] = [];
   private subscriptions: Subscription[] = [];
   public limits$ = this.limitsChangedSubject.asObservable();
-  public colorMapReset$ = this.colorMapResetSubject.asObservable();
   public dataRangeReset$ = this.dataRangeResetSubject.asObservable();
 
   constructor() {
@@ -95,11 +93,6 @@ export class ColorControl {
   private onRangeResetClick(event: any) {
     this.dataRangeResetSubject.next(true);
   }
-  private onResetClick(event: any) {
-    this.colorMapResetSubject.next(true);
-
-  }
-
   public getContainer() {
     return this.container;
   }

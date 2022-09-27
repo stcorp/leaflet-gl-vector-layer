@@ -17,9 +17,9 @@ async function initData(mode: 'points'|'grid'|'swath') {
     let data2 = GenerateExampleData('grid');
     let leafletGlVectorLayerWrapperOptions: LeafletGlVectorLayerWrapperOptions = {
         colormaps: [
-            [[0, 0.2, 0.4, 0.6, 1], [0.5, 0.2, 1, 0, 1], [1, 1, 0.2, 1, 1]],
-            [[0, 1, 0, 0, 1], [0.2, 0.4, 1, 0.2, 1], [1, 0.8, 0.5, 0, 1]],
-            [[0, 1, 0, 0, 1], [0.5, 0, 1, 0, 1], [1, 0, 0, 1, 1]]
+            [[0.2, 0.4, 0.6], [0.2, 1, 0], [1, 0.2, 1]],
+            [[1, 0, 0], [0.4, 1, 0.2], [0.8, 0.5, 0]],
+            [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
         ],
     }
     let leafletGlVectorLayerOptions: any = {
@@ -28,7 +28,7 @@ async function initData(mode: 'points'|'grid'|'swath') {
                 ...data
             },
             plot_type: mode,
-            colormap: [[0, 1, 1, 0, 1], [0.5, 0, 1, 0, 1], [1, 0, 0, 1, 1]],
+            colormap: [[0, 1, 0], [0, 0, 1], [1, 0, 0]],
             colorrange: [0, 2]
         }
     }
