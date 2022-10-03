@@ -3,9 +3,7 @@ import {
     Bounds,
     DomUtil,
     LatLng,
-    ZoomAnimEvent,
     Map,
-    ResizeEvent,
     setOptions,
     Layer,
     Point,
@@ -15,19 +13,15 @@ import {PointsRenderer} from "./points-renderer";
 import {GridRenderer} from "./grid-renderer";
 import {SwathRenderer} from "./swath-renderer";
 import {DataHelper} from "./helpers/data-helper";
-import {LeafletGlVectorLayerWrapper} from "./leaflet-gl-vector-layer-wrapper";
 import {guidGenerator} from "./helpers/guid-generator";
 import {
     LeafletGlVectorLayerOptions,
-    LeafletGlVectorLayerProcessedOptions
 } from "./types/leaflet-gl-vector-layer-options";
 import { ControlsService, ILimitsSubject } from './services/controls-service';
 import chroma from 'chroma-js';
-import { IXrgbaColor } from './types/colors';
 import { ColorService } from './services/color-service';
 import { filter, Subscription } from 'rxjs';
-import { IHandler } from "./types/handlers";
-import { colormapToXrgbaColormap } from './helpers/color-transformers';
+import { IHandler } from './types/handlers';
 export interface ExtendedOptions extends L.GridLayerOptions {
     leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions
 }
@@ -44,20 +38,11 @@ export class LeafletGlVectorLayer extends L.GridLayer {
     private isFirstRun = true;
     public isHidden = false;
     private subscriptions: Subscription[] = [];
-    private handlers: any[] = [];
+    private handlers: IHandler[] = [];
     constructor(newOptions: ExtendedOptions) {
         super(newOptions);
-        let colormap = newOptions.leafletGlVectorLayerOptions.colormap;
-        let xrgbaColormap;
-        if(colormap && colormap.length > 0) {
-            xrgbaColormap = colormapToXrgbaColormap(colormap) as IXrgbaColor[];
-        }
-        this.id = guidGenerator()
-        let leafletGlVectorLayerOptions: LeafletGlVectorLayerProcessedOptions = {
-            ...newOptions.leafletGlVectorLayerOptions,
-            colormap: xrgbaColormap
-        }
-        ControlsService.setOptions(this.id, leafletGlVectorLayerOptions);
+        this.id = guidGenerator();
+        ControlsService.setOptions(this.id, newOptions.leafletGlVectorLayerOptions);
         setOptions(this, {...this.options, leafletGlVectorLayerOptions: newOptions.leafletGlVectorLayerOptions});
     }
 

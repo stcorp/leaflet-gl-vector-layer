@@ -1,16 +1,14 @@
-import { IColorSlider, IColorWrapper } from '../types/color-slider';
 import { guidGenerator } from '../helpers/guid-generator';
 import * as L from 'leaflet';
-import { IColorMapWrapper } from './color-map.control';
-import { ColorService } from '../services/color-service';
+import { ColorService, IColorEdgePoint, IColorSlider } from '../services/color-service';
 import { IHandler } from '../types/handlers';
-import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
-import { getGradientForColorWrappers } from '../helpers/color-maps';
+import { Subject, Subscription } from 'rxjs';
 import { IroColor } from '@irojs/iro-core/dist/color';
 import { IRGBA } from '../types/colors';
+import { getGradientForEdgePoints } from '../helpers/color-transformers';
 export class ColorPicker {
 
-  private colorWrappersUpdateSubject = new Subject<IColorWrapper[]>();
+  private colorEdgePointsUpdateSubject = new Subject<IColorEdgePoint[]>();
   private innerContainer: HTMLElement;
   private colorPickerContainer: HTMLElement;
   private gradientContainer: HTMLElement;
@@ -24,18 +22,11 @@ export class ColorPicker {
   private previousStopColor: IRGBA|null|undefined;
   private handlers: IHandler[] = [];
   private subscriptions: Subscription[] = [];
-  public colorWrappers: IColorWrapper[] = [];
+  public colorEdgePoints: IColorEdgePoint[] = [];
   public colorSliders: IColorSlider[] = [];
-  public colorWrappersUpdated$ = this.colorWrappersUpdateSubject.asObservable();
+  public colorEdgePointsUpdated$ = this.colorEdgePointsUpdateSubject.asObservable();
 
-  constructor(colorWrapperObservable: BehaviorSubject<IColorWrapper[]>) {
-    colorWrapperObservable.subscribe((colorWrappers: IColorWrapper[]) => {
-      if(colorWrappers.length && this.innerContainer) {
-        this.colorWrappers = colorWrappers;
-        this.onColorWrappersChanged();
-        this.updateGradientElement();
-      }
-    });
+  constructor() {
     let selectedColorChangedSubscription = ColorService.selectedColorChangedSubject.subscribe((color: any) => {
       this.onSelectedColorChange(color);
     });
@@ -48,15 +39,22 @@ export class ColorPicker {
 
   }
 
+  public setEdgePoints(edgePoints: IColorEdgePoint[]) {
+    if(edgePoints.length && this.innerContainer) {
+      this.colorEdgePoints = edgePoints;
+      this.onColorWrappersChanged();
+      this.updateGradientElement();
+    }
+  }
+
   private onColorWrappersChanged() {
     this.deleteExistingSliders();
     this.colorSliders = [];
     this.selectedColorSlider = null;
-    for(let i = 0; i < this.colorWrappers.length; i++) {
-      this.insertColorSlider(this.colorWrappers[i], i);
+    for(let i = 0; i < this.colorEdgePoints.length; i++) {
+      this.insertColorSlider(this.colorEdgePoints[i], i);
     }
     this.selectColorSlider(this.colorSliders[0]);
-    this.colorWrappersUpdateSubject.next(this.colorWrappers);
     this.updateGradientElement();
   }
 
@@ -118,7 +116,7 @@ export class ColorPicker {
     onColorInputClickHandler.element.addEventListener(onColorInputClickHandler.type, onColorInputClickHandler.func);
 
     function onColorInputClick(event: any) {
-      self.previousStopColor = self.selectedColorSlider?.colorWrapper?.color;
+      self.previousStopColor = self.selectedColorSlider?.edgePoint?.color;
       ColorService.openColorPickerDialog();
     }
 
@@ -131,7 +129,7 @@ export class ColorPicker {
     function onDocumentMouseUp(event: any) {
       if(self.draggedSlider) {
         self.draggedSlider = null;
-        self.colorWrappersUpdateSubject.next(self.colorWrappers);
+        self.colorEdgePointsUpdateSubject.next(self.colorEdgePoints);
       }
     }
 
@@ -143,8 +141,8 @@ export class ColorPicker {
         let left = Math.max(Math.min(event.clientX - bbox.x - (self.COLOR_SLIDER_WIDTH / 2), self.gradientContainer!.clientWidth - (self.COLOR_SLIDER_WIDTH / 2)), -(self.COLOR_SLIDER_WIDTH / 2));
         let newPercentage = Math.max((left) / self.gradientContainer!.clientWidth, 0);
         self.draggedSlider.style.left = left + 'px';
-        self.selectedColorSlider.colorWrapper.value = newPercentage;
-        self.colorWrappers = self.colorWrappers.sort((a, b) => {
+        self.selectedColorSlider.edgePoint.value = newPercentage;
+        self.colorEdgePoints = self.colorEdgePoints.sort((a, b) => {
           return a.value < b.value ? -1 : 1;
         })
         self.updateGradientElement();
@@ -152,7 +150,7 @@ export class ColorPicker {
     }
 
     function onGradientStopDeleteClick(event: any) {
-      if(self.colorWrappers.length <= 2) {
+      if(self.colorEdgePoints.length <= 2) {
         return;
       }
       if(self.selectedColorSlider) {
@@ -164,7 +162,7 @@ export class ColorPicker {
   public onSelectedColorChange(color: IroColor) {
     let colorArray = [color.rgba.r, color.rgba.g, color.rgba.b, color.rgba.a] as IRGBA;
     if(this.selectedColorSlider) {
-      this.selectedColorSlider.colorWrapper.color = colorArray;
+      this.selectedColorSlider.edgePoint.color = colorArray;
     }
     let colorString = this.getRgbaString(colorArray)
     this.colorInput!.style.background = colorString;
@@ -176,15 +174,15 @@ export class ColorPicker {
   public onColorPickerDialogClose(reset: boolean) {
     if(reset) {
       if(this.selectedColorSlider && this.previousStopColor) {
-        this.selectedColorSlider.colorWrapper.color = this.previousStopColor;
-        let colorString = this.getRgbaString(this.selectedColorSlider.colorWrapper.color)
+        this.selectedColorSlider.edgePoint.color = this.previousStopColor;
+        let colorString = this.getRgbaString(this.selectedColorSlider.edgePoint.color)
         this.colorInput.style.background = colorString;
         let innerSliderElement = this.selectedColorSlider.slider.querySelector('.color-slider-inner') as HTMLElement;
         innerSliderElement.style.background = colorString;
         this.updateGradientElement();
       }
     } else {
-      this.colorWrappersUpdateSubject.next(this.colorWrappers);
+      this.colorEdgePointsUpdateSubject.next(this.colorEdgePoints);
     }
   }
 
@@ -210,15 +208,15 @@ export class ColorPicker {
 
     if(index > -1) {
       this.colorSliders.splice(index, 1);
-      this.colorWrappers.splice(index, 1);
+      this.colorEdgePoints.splice(index, 1);
       if(this.colorSliders.length) {
         this.selectColorSlider(this.colorSliders[0]);
       }
-      if(this.colorWrappers.length <= 2) {
+      if(this.colorEdgePoints.length <= 2) {
         this.gradientStopDeleteButton.classList.add('disabled');
       }
     }
-    this.colorWrappersUpdateSubject.next(this.colorWrappers);
+    this.colorEdgePointsUpdateSubject.next(this.colorEdgePoints);
     this.updateGradientElement();
   }
 
@@ -227,9 +225,9 @@ export class ColorPicker {
       return;
     }
     let linearGradientString = 'linear-gradient(to right';
-    for(let i = 0; i < this.colorWrappers.length ; i++) {
-      let rgba = this.colorWrappers[i].color;
-      let suffix = `, rgba(${rgba}) ${this.colorWrappers[i].value * 100}%`
+    for(let i = 0; i < this.colorEdgePoints.length ; i++) {
+      let rgba = this.colorEdgePoints[i].color;
+      let suffix = `, rgba(${rgba}) ${this.colorEdgePoints[i].value * 100}%`
       linearGradientString += suffix;
     }
     this.gradientElement.style.setProperty("--gradient-element-background", linearGradientString);
@@ -240,53 +238,53 @@ export class ColorPicker {
   }
 
   public addNewColor(percentage: number) {
-    let index = this.colorWrappers.findIndex((item, index) => {
+    let index = this.colorEdgePoints.findIndex((item, index) => {
       let isSmaller = item.value < percentage;
-      if(index === this.colorWrappers.length - 1) {
+      if(index === this.colorEdgePoints.length - 1) {
         return index;
       } else {
-        return isSmaller && this.colorWrappers[index + 1].value > percentage;
+        return isSmaller && this.colorEdgePoints[index + 1].value > percentage;
       }
     })
     index += 1;
-    let gradient = getGradientForColorWrappers(this.colorWrappers);
+    let gradient = getGradientForEdgePoints(this.colorEdgePoints);
     let colorAtPosition = gradient(percentage);
     let color = colorAtPosition.rgba();
     let newColorWrapper = {
       color,
       value: percentage
     }
-    this.colorWrappers.splice(index, 0, newColorWrapper);
+    this.colorEdgePoints.splice(index, 0, newColorWrapper);
     let slider = this.insertColorSlider(newColorWrapper, index);
     this.selectColorSlider(slider);
 
     if(this.colorSliders.length > 2) {
       this.gradientStopDeleteButton.classList.remove('disabled');
     }
-    this.colorWrappersUpdateSubject.next(this.colorWrappers);
+    this.colorEdgePointsUpdateSubject.next(this.colorEdgePoints);
   }
 
-  private insertColorSlider(colorWrapper: IColorWrapper, index: number) {
+  private insertColorSlider(colorEdgePoint: IColorEdgePoint, index: number) {
     let slider = document.createElement('div');
     slider.classList.add('color-slider-wrapper');
     slider.id = guidGenerator();
     let bbox = this.gradientContainer!.getBoundingClientRect();
-    slider.style.left = (bbox.width * colorWrapper.value - this.COLOR_SLIDER_WIDTH / 2) + 'px';
+    slider.style.left = (bbox.width * colorEdgePoint.value - this.COLOR_SLIDER_WIDTH / 2) + 'px';
     let sliderTriangle = document.createElement('div');
     sliderTriangle.classList.add('color-slider-triangle');
     slider.appendChild(sliderTriangle);
 
     let sliderInner = document.createElement('div');
     sliderInner.classList.add('color-slider-inner');
-    sliderInner.style.background = this.getRgbaString(colorWrapper.color);
+    sliderInner.style.background = this.getRgbaString(colorEdgePoint.color);
     slider.appendChild(sliderInner);
 
     this.gradientContainer!.appendChild(slider);
 
     let newColorSlider = {
       slider,
-      colorWrapper
-    }
+      edgePoint: colorEdgePoint
+    };
     if(index !== null && index !== undefined) {
       this.colorSliders.splice(index, 0, newColorSlider);
     } else {
@@ -322,12 +320,14 @@ export class ColorPicker {
   private selectColorSlider(colorSlider: IColorSlider) {
     this.selectedColorSlider = colorSlider
     ColorService.selectColorSlider(this.selectedColorSlider);
-    this.colorInput!.style.background = this.getRgbaString(this.selectedColorSlider.colorWrapper.color);
+    this.colorInput!.style.background = this.getRgbaString(this.selectedColorSlider.edgePoint.color);
   }
 
   public cleanUp() {
     for(let handler of this.handlers) {
-      handler.element.removeEventListener(handler.type, handler.func);
+      if(handler.element) {
+        handler.element.removeEventListener(handler.type, handler.func);
+      }
     }
     for(let subscription of this.subscriptions) {
       subscription.unsubscribe();

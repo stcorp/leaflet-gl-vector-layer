@@ -1,5 +1,4 @@
 import * as L from 'leaflet';
-import { IColorSlider } from "../types/color-slider";
 import { ControlsService } from '../services/controls-service';
 import { LeafletGlVectorLayer } from '../leaflet-gl-vector-layer';
 import { Subscription } from 'rxjs';
@@ -7,13 +6,8 @@ import { ColorControl } from './color.control';
 import { ColorMapControl, IColorMapWrapper } from './color-map.control';
 import { LayerControl } from './layer.control';
 import { ColorPickerDialogControl } from './color-picker-dialog.control';
-import { ColorService } from '../services/color-service';
+import { ColorService, IColorSlider } from '../services/color-service';
 import { IroColor } from '@irojs/iro-core/dist/color';
-import { IXrgbaColor } from '../types/colors';
-
-interface ExtendedControlOptions extends L.ControlOptions {
-  colormaps?: IXrgbaColor[][];
-}
 
 export class LeafletGlVectorLayerControls extends L.Control {
   private controlWrapperOuterContainer: HTMLElement;
@@ -34,7 +28,7 @@ export class LeafletGlVectorLayerControls extends L.Control {
   public map: L.Map|undefined;
   private subscriptions: Subscription[] = [];
 
-  constructor(public options: ExtendedControlOptions) {
+  constructor() {
     super();
 
     let colorSliderSubscription = ColorService.selectedColorSliderSubject.subscribe((colorSlider: IColorSlider) => {
@@ -96,7 +90,7 @@ export class LeafletGlVectorLayerControls extends L.Control {
   }
 
   private updateColorPicker(colorSlider: IColorSlider) {
-    let colorString = this.getRgbaString(colorSlider.colorWrapper.color);
+    let colorString = this.getRgbaString(colorSlider.edgePoint.color);
     this.colorPickerDialogControl.setColors([colorString])
   }
 
@@ -147,6 +141,10 @@ export class LeafletGlVectorLayerControls extends L.Control {
     this.createColorControl();
     this.createColorMapControl();
     this.createLayerControl();
+    let selectedColorCollection = ColorService.getSelectedColorCollection();
+    if(selectedColorCollection) {
+      ColorService.selectColorMap(selectedColorCollection.xrgbaColormap);
+    }
   }
 
   public onLayerAdded(layer: LeafletGlVectorLayer) {
@@ -166,16 +164,17 @@ export class LeafletGlVectorLayerControls extends L.Control {
   }
 
   private createColorMapControl() {
-    let defaultColorMap = ControlsService.getOptions()?.colormap;
+    let colormaps = ColorService.getAllColorCollections();
     this.colorMapControl = new ColorMapControl({
-      colormaps: this.options.colormaps,
-      defaultColorMap
-    });
-    this.colorMapControl.colorMap$.subscribe((colorMap: IColorMapWrapper|undefined) => {
-      ColorService.selectColorMap(colorMap);
+      colormaps: colormaps.slice(1).map(map => map.xrgbaColormap),
+      defaultColorMap: colormaps[0].xrgbaColormap
     });
 
+    this.colorMapControl.colorMap$.subscribe((colorMapWrapper: IColorMapWrapper) => {
+      ColorService.selectColorMap(colorMapWrapper.colors);
+    });
     this.controlWrapperContentContainer.appendChild(this.colorMapControl.getContainer());
+
   }
 
   private createColorControl() {

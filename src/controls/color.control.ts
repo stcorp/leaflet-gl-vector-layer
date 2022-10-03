@@ -3,9 +3,8 @@ import { ColorPicker } from './color-picker';
 import { Subject, Subscription } from 'rxjs';
 import { ControlsService } from '../services/controls-service';
 import { IHandler } from '../types/handlers';
-import { ColorService } from '../services/color-service';
-import { IColorWrapper } from '../types/color-slider';
-import { getGradientForColorWrappers } from '../helpers/color-maps';
+import { ColorService, IColorEdgePoint } from '../services/color-service';
+import { getGradientForEdgePoints } from '../helpers/color-transformers';
 
 export class ColorControl {
   private container: HTMLElement;
@@ -28,13 +27,17 @@ export class ColorControl {
       max: ControlsService.selectedLayer?.dataHelper.currentMaxValue
     }
     this.container = L.DomUtil.create('div', 'color-control-container');
-    this.colorPicker = new ColorPicker(ColorService.selectedColorWrappersSubject);
-    let colorWrappersUpdatedSubscription = this.colorPicker.colorWrappersUpdated$.subscribe((colorWrappers: IColorWrapper[]) => {
-      let gradient = getGradientForColorWrappers(colorWrappers);
-      ColorService.setSelectedColorWrappers(colorWrappers);
+    this.colorPicker = new ColorPicker();
+    let selectedColorSubscription = ColorService.colorMapSelectedSubject.subscribe((colorCollection) => {
+      this.colorPicker.setEdgePoints(colorCollection.colorPickerEdgePoints);
+    });
+    let colorWrappersUpdatedSubscription = this.colorPicker.colorEdgePointsUpdated$.subscribe((colorEdgePoints: IColorEdgePoint[]) => {
+      let gradient = getGradientForEdgePoints(colorEdgePoints);
+      ColorService.updateEdgePointsOfCurrentColorCollection(colorEdgePoints);
       ColorService.setGradient(gradient);
     });
     this.subscriptions.push(colorWrappersUpdatedSubscription);
+    this.subscriptions.push(selectedColorSubscription);
 
     let header = L.DomUtil.create('div', 'control-section-header', this.container);
     header.innerHTML = 'Control the color map of the layer';
@@ -117,7 +120,9 @@ export class ColorControl {
 
   public cleanUp() {
     for(let handler of this.handlers) {
-      handler.element.removeEventListener(handler.type, handler.func);
+      if(handler.element) {
+        handler.element.removeEventListener(handler.type, handler.func);
+      }
     }
     for(let subscription of this.subscriptions) {
       subscription.unsubscribe();

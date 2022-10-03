@@ -3,7 +3,7 @@ import {LeafletGlVectorLayerOptions} from "./types/leaflet-gl-vector-layer-optio
 import {Map} from "leaflet";
 import {DataHelper} from "./helpers/data-helper";
 import {IData} from "./types/data";
-import {IPolygon, IQuad, ITriangle} from "./types/polygon";
+import {IPolygon, IQuad, ITriangle} from "./types/shapes";
 
 export class GridRenderer extends BaseRenderer {
 

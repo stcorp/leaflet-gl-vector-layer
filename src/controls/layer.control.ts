@@ -91,7 +91,9 @@ export class LayerControl {
 
   public cleanUp() {
     for(let handler of this.handlers) {
-      handler.element.removeEventListener(handler.type, handler.func);
+      if(handler.element) {
+        handler.element.removeEventListener(handler.type, handler.func);
+      }
     }
     for(let subscription of this.subscriptions) {
       subscription.unsubscribe();

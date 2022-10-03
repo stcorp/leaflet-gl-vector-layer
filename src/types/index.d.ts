@@ -7,6 +7,8 @@ import {SwathRenderer} from "../swath-renderer";
 import {DataHelper} from "../helpers/data-helper";
 import { LeafletGlVectorLayerControls } from '../controls/leaflet-gl-vector-layer-controls';
 import { ExtendedOptions } from '../leaflet-gl-vector-layer';
+import { IHandler } from './handlers';
+import { Subscription } from 'rxjs';
 
 export class LeafletGlVectorLayer extends Layer {
   canvas: HTMLCanvasElement;
@@ -19,6 +21,9 @@ export class LeafletGlVectorLayer extends Layer {
   control: LeafletGlVectorLayerControl;
   _leaflet_id: string;
   id: string;
+  isHidden: boolean;
+  private handlers: IHandler[];
+  private subscriptions: Subscription[];
   private isFirstRun;
   constructor(newOptions: ExtendedOptions);
   onRemove(map: Map): this;
@@ -38,15 +43,13 @@ export class LeafletGlVectorLayer extends Layer {
 }
 
 export class LeafletGlVectorLayerWrapper extends L.Layer {
-  private layers;
-  controls: LeafletGlVectorLayerControls;
-  private selectedLayer;
+  private layers: LeafletGlVectorLayer[];
+  controls: LeafletGlVectorLayerControls|undefined;
   map: L.Map;
   constructor();
   onAdd(map: L.Map): this;
   addTo(map: L.Map): this;
-  removeLayer(layer: any): this;
-  cleanUpControlAndLayerData(layer: any): void;
+  private cleanUp(layer: any): void;
   addLayer(layer: LeafletGlVectorLayer): this;
   private onLayerSelected;
   private animateLayerOpacity;

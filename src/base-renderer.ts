@@ -3,9 +3,9 @@ import {Map} from "leaflet";
 import {LeafletGlVectorLayerOptions} from "./types/leaflet-gl-vector-layer-options";
 import {ICanvasOverlayDrawEvent} from "./types/canvas-overlay-draw-event";
 import chroma from "chroma-js";
-import {IPoint} from "./types/point";
+import {IPoint} from "./types/shapes";
 import {DataHelper} from "./helpers/data-helper";
-import {IPolygon, IQuad, ITriangle} from "./types/polygon";
+import {IPolygon, IQuad, ITriangle} from "./types/shapes";
 
 export interface GlCollectionWrapper {
     gl: WebGLRenderingContext;
