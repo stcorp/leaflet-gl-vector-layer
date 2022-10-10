@@ -16,6 +16,8 @@ export class LeafletGlVectorLayerWrapper extends L.Layer {
   private layers: LeafletGlVectorLayer[] = [];
   public controls: LeafletGlVectorLayerControls|undefined;
   public map: L.Map;
+  private controlsService = new ControlsService();
+  private colorService = new ColorService(this.controlsService);
   constructor(private options: LeafletGlVectorLayerWrapperOptions) {
     super();
     this.cleanUp();
@@ -64,7 +66,7 @@ export class LeafletGlVectorLayerWrapper extends L.Layer {
         }
       }
     }
-    ColorService.setGlobalColorCollections(colorCollections);
+    this.colorService.setGlobalColorCollections(colorCollections);
     window.onbeforeunload = () => {
       this.cleanUp(true);
     }
@@ -72,8 +74,8 @@ export class LeafletGlVectorLayerWrapper extends L.Layer {
 
   private cleanUp(clearSubjects: boolean = false) {
 
-    ControlsService.cleanUp(clearSubjects);
-    ColorService.cleanUp(clearSubjects);
+    this.controlsService.cleanUp(clearSubjects);
+    this.colorService.cleanUp(clearSubjects);
     if(this.controls) {
       this.controls.cleanUp();
     }
@@ -104,12 +106,13 @@ export class LeafletGlVectorLayerWrapper extends L.Layer {
   }
 
   public addLayer(layer: LeafletGlVectorLayer) {
+    layer.addServices(this.controlsService, this.colorService);
     layer.addTo(this.map);
     this.layers.push(layer);
-    ControlsService.addLayer(layer);
-    if(!ControlsService.selectedLayer) {
-      ControlsService.selectLayer(layer);
-      this.controls = new LeafletGlVectorLayerControls();
+    this.controlsService.addLayer(layer);
+    if(!this.controlsService.selectedLayer) {
+      this.controlsService.selectLayer(layer);
+      this.controls = new LeafletGlVectorLayerControls(this.controlsService, this.colorService);
       this.controls.addTo(this.map);
     }
     return this;

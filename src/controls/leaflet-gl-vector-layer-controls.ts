@@ -28,21 +28,21 @@ export class LeafletGlVectorLayerControls extends L.Control {
   public map: L.Map|undefined;
   private subscriptions: Subscription[] = [];
 
-  constructor() {
+  constructor(private controlsService: ControlsService, private colorService: ColorService) {
     super();
 
-    let colorSliderSubscription = ColorService.selectedColorSliderSubject.subscribe((colorSlider: IColorSlider) => {
+    let colorSliderSubscription = this.colorService.selectedColorSliderSubject.subscribe((colorSlider: IColorSlider) => {
       this.updateColorPicker(colorSlider);
     })
 
-    let selectlayerSubscription = ControlsService.selectLayerSubject.subscribe((layer: LeafletGlVectorLayer) => {
+    let selectlayerSubscription = this.controlsService.selectLayerSubject.subscribe((layer: LeafletGlVectorLayer) => {
       this.onLayerSelected();
     });
-    let addLayerSubscription = ControlsService.addLayerSubject.subscribe((layer: LeafletGlVectorLayer) => {
+    let addLayerSubscription = this.controlsService.addLayerSubject.subscribe((layer: LeafletGlVectorLayer) => {
       this.onLayerAdded(layer);
     });
 
-    let colorPickerDialogSubscription = ColorService.colorPickerDialogSubject.subscribe(data => {
+    let colorPickerDialogSubscription = this.colorService.colorPickerDialogSubject.subscribe(data => {
       if(data.isOpen) {
         this.colorPickerDialogControl.show();
       } else {
@@ -77,13 +77,13 @@ export class LeafletGlVectorLayerControls extends L.Control {
     this.colorPickerDialogControl.attachTo(this.controlWrapperOuterContainer);
     let colorPickerDialogControlSubscription = this.colorPickerDialogControl.toggled$.subscribe((data: {isOpen: boolean, cancel: boolean}) => {
       if(data.isOpen) {
-        ColorService.openColorPickerDialog();
+        this.colorService.openColorPickerDialog();
       } else {
-        ColorService.closeColorPickerDialog(data.cancel);
+        this.colorService.closeColorPickerDialog(data.cancel);
       }
     })
     let colorChangedSubscription = this.colorPickerDialogControl.colorChanged$.subscribe((color: IroColor) => {
-      ColorService.changeColor(color);
+      this.colorService.changeColor(color);
     })
 
     this.subscriptions.push(colorPickerDialogControlSubscription, colorChangedSubscription);
@@ -141,9 +141,9 @@ export class LeafletGlVectorLayerControls extends L.Control {
     this.createColorControl();
     this.createColorMapControl();
     this.createLayerControl();
-    let selectedColorCollection = ColorService.getSelectedColorCollection();
+    let selectedColorCollection = this.colorService.getSelectedColorCollection();
     if(selectedColorCollection) {
-      ColorService.selectColorMap(selectedColorCollection.xrgbaColormap);
+      this.colorService.selectColorMap(selectedColorCollection.xrgbaColormap);
     }
   }
 
@@ -153,38 +153,38 @@ export class LeafletGlVectorLayerControls extends L.Control {
 
 
   private createLayerControl() {
-    this.layerControl = new LayerControl();
+    this.layerControl = new LayerControl(this.controlsService);
     this.layerControl.showLayer$.subscribe((layer: LeafletGlVectorLayer) => {
-      ControlsService.showLayer(layer);
+      this.controlsService.showLayer(layer);
     })
     this.layerControl.hideLayer$.subscribe((layer: LeafletGlVectorLayer) => {
-      ControlsService.hideLayer(layer);
+      this.controlsService.hideLayer(layer);
     })
     this.controlWrapperContentContainer.appendChild(this.layerControl.getContainer());
   }
 
   private createColorMapControl() {
-    let colormaps = ColorService.getAllColorCollections();
+    let colormaps = this.colorService.getAllColorCollections();
     this.colorMapControl = new ColorMapControl({
       colormaps: colormaps.slice(1).map(map => map.xrgbaColormap),
       defaultColorMap: colormaps[0].xrgbaColormap
     });
 
     this.colorMapControl.colorMap$.subscribe((colorMapWrapper: IColorMapWrapper) => {
-      ColorService.selectColorMap(colorMapWrapper.colors);
+      this.colorService.selectColorMap(colorMapWrapper.colors);
     });
     this.controlWrapperContentContainer.appendChild(this.colorMapControl.getContainer());
 
   }
 
   private createColorControl() {
-    this.colorControl = new ColorControl()
+    this.colorControl = new ColorControl(this.controlsService, this.colorService)
     this.colorControl.dataRangeReset$.subscribe(() => {
       this.colorPickerDialogControl.hide();
-      if(ControlsService.selectedLayer) {
-        ControlsService.setLimits({
-          min: ControlsService.selectedLayer.dataHelper.minValue,
-          max: ControlsService.selectedLayer.dataHelper.maxValue
+      if(this.controlsService.selectedLayer) {
+        this.controlsService.setLimits({
+          min: this.controlsService.selectedLayer.dataHelper.minValue,
+          max: this.controlsService.selectedLayer.dataHelper.maxValue
         });
       } else {
         console.warn('No layer selected, limits could not be set');
@@ -192,11 +192,11 @@ export class LeafletGlVectorLayerControls extends L.Control {
 
     });
     this.colorControl.limits$.subscribe((data: {type: 'min'|'max', value: number}) => {
-      if(ControlsService.selectedLayer) {
-        ControlsService.selectedLayer.dataHelper.setValue(data.type, data.value);
-        ControlsService.setLimits({
-          min: ControlsService.selectedLayer.dataHelper.currentMinValue,
-          max: ControlsService.selectedLayer.dataHelper.currentMaxValue
+      if(this.controlsService.selectedLayer) {
+        this.controlsService.selectedLayer.dataHelper.setValue(data.type, data.value);
+        this.controlsService.setLimits({
+          min: this.controlsService.selectedLayer.dataHelper.currentMinValue,
+          max: this.controlsService.selectedLayer.dataHelper.currentMaxValue
         });
       } else {
         console.warn('No layer selected, colors could not be set');

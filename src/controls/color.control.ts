@@ -21,20 +21,20 @@ export class ColorControl {
   public limits$ = this.limitsChangedSubject.asObservable();
   public dataRangeReset$ = this.dataRangeResetSubject.asObservable();
 
-  constructor() {
+  constructor(private controlsService: ControlsService, private colorService: ColorService) {
     let defaultLimits = {
-      min: ControlsService.selectedLayer?.dataHelper.currentMinValue,
-      max: ControlsService.selectedLayer?.dataHelper.currentMaxValue
+      min: this.controlsService.selectedLayer?.dataHelper.currentMinValue,
+      max: this.controlsService.selectedLayer?.dataHelper.currentMaxValue
     }
     this.container = L.DomUtil.create('div', 'color-control-container');
-    this.colorPicker = new ColorPicker();
-    let selectedColorSubscription = ColorService.colorMapSelectedSubject.subscribe((colorCollection) => {
+    this.colorPicker = new ColorPicker(this.colorService);
+    let selectedColorSubscription = this.colorService.colorMapSelectedSubject.subscribe((colorCollection) => {
       this.colorPicker.setEdgePoints(colorCollection.colorPickerEdgePoints);
     });
     let colorWrappersUpdatedSubscription = this.colorPicker.colorEdgePointsUpdated$.subscribe((colorEdgePoints: IColorEdgePoint[]) => {
       let gradient = getGradientForEdgePoints(colorEdgePoints);
-      ColorService.updateEdgePointsOfCurrentColorCollection(colorEdgePoints);
-      ColorService.setGradient(gradient);
+      this.colorService.updateEdgePointsOfCurrentColorCollection(colorEdgePoints);
+      this.colorService.setGradient(gradient);
     });
     this.subscriptions.push(colorWrappersUpdatedSubscription);
     this.subscriptions.push(selectedColorSubscription);
@@ -87,7 +87,7 @@ export class ColorControl {
     }
     rangeResetHandler['element'].addEventListener(rangeResetHandler['type'], rangeResetHandler['func']);
 
-    let limitsSubscription = ControlsService.limitsSubject.subscribe((limits) => {
+    let limitsSubscription = this.controlsService.limitsSubject.subscribe((limits) => {
       this.rangeMinInput.value = String(limits.min);
       this.rangeMaxInput.value = String(limits.max);
     });
