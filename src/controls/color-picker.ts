@@ -26,11 +26,11 @@ export class ColorPicker {
   public colorSliders: IColorSlider[] = [];
   public colorEdgePointsUpdated$ = this.colorEdgePointsUpdateSubject.asObservable();
 
-  constructor() {
-    let selectedColorChangedSubscription = ColorService.selectedColorChangedSubject.subscribe((color: any) => {
+  constructor(private colorService: ColorService) {
+    let selectedColorChangedSubscription = this.colorService.selectedColorChangedSubject.subscribe((color: any) => {
       this.onSelectedColorChange(color);
     });
-    let colorPickerDialogSubscription = ColorService.colorPickerDialogSubject.subscribe(data => {
+    let colorPickerDialogSubscription = this.colorService.colorPickerDialogSubject.subscribe(data => {
       this.onColorPickerDialogClose(data.isReset);
     });
 
@@ -117,7 +117,7 @@ export class ColorPicker {
 
     function onColorInputClick(event: any) {
       self.previousStopColor = self.selectedColorSlider?.edgePoint?.color;
-      ColorService.openColorPickerDialog();
+      self.colorService.openColorPickerDialog();
     }
 
     function onGradientContainerDblClick(event: any) {
@@ -319,7 +319,7 @@ export class ColorPicker {
 
   private selectColorSlider(colorSlider: IColorSlider) {
     this.selectedColorSlider = colorSlider
-    ColorService.selectColorSlider(this.selectedColorSlider);
+    this.colorService.selectColorSlider(this.selectedColorSlider);
     this.colorInput!.style.background = this.getRgbaString(this.selectedColorSlider.edgePoint.color);
   }
 

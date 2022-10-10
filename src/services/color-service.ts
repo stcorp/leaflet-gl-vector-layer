@@ -33,69 +33,52 @@ export interface IColorSlider {
   edgePoint: IColorEdgePoint
 }
 
-export interface IColorService {
-  changeColor: (color: IroColor) => void;
-  updateEdgePointsOfCurrentColorCollection: (edgePoints: IColorEdgePoint[]) => void;
-  selectColorMap: (colors: IXRGBA[]) => void;
-  setGlobalColorCollections: (colorCollections: IColorCollection[]) => void;
-  setColorCollectionsForLayer: (layer: LeafletGlVectorLayer, colorCollections: IColorCollection[]) => void;
-  selectColorSlider: (slider: IColorSlider) => void;
-  setGradient: (gradient: chroma.Scale, layer?: LeafletGlVectorLayer) => void;
-  addLayer: (layer: LeafletGlVectorLayer) => void;
-  cleanUp: (clearSubjects: boolean) => void;
-  getAllColorCollections: () => IColorCollection[];
-  openColorPickerDialog: () => void;
-  closeColorPickerDialog: (reset: boolean) => void;
-  selectedColorCollections: ISelectedColorCollections;
-  updateSelectedColorCollection: (newColorCollection: IColorCollection) => void;
-  getSelectedColorCollection: () => IColorCollection|null;
-  colorPickerDialogSubject: Subject<{
-    isOpen: boolean;
-    isReset: boolean;
-  }>;
-  selectedColorSliderSubject: Subject<IColorSlider>;
-  colorMapSelectedSubject: BehaviorSubject<IColorCollection>;
-  selectedColorChangedSubject: Subject<IroColor>;
-  gradientSubject: Subject<IGradientSubject>;
-  globalColorCollections: IColorCollection[];
-  colorCollectionsForLayers: {
-    [layerId: string]: IColorCollection[];
-  };
-  gradientsPerLayer: {
-    [layerId: string]: chroma.Scale
-  }
-}
-
-export const ColorService: IColorService = {
-  colorPickerDialogSubject: new Subject<{isOpen: boolean; isReset: boolean}>(),
-  selectedColorSliderSubject: new Subject<IColorSlider>(),
-  gradientSubject: new Subject<IGradientSubject>(),
-  selectedColorChangedSubject: new Subject<IroColor>(),
-  colorMapSelectedSubject: new BehaviorSubject<IColorCollection>({
+export class ColorService {
+  colorPickerDialogSubject = new Subject<{isOpen: boolean; isReset: boolean}>();
+  selectedColorSliderSubject = new Subject<IColorSlider>();
+  gradientSubject = new Subject<IGradientSubject>();
+  selectedColorChangedSubject = new Subject<IroColor>();
+  colorMapSelectedSubject = new BehaviorSubject<IColorCollection>({
     name: '',
     colormap: [],
     xrgbaColormap: [],
     colorPickerEdgePoints: []
-  }),
-  globalColorCollections: [],
-  selectedColorCollections: {},
-  colorCollectionsForLayers: {},
-  gradientsPerLayer: {},
-  changeColor: (color: any) => {
-    ColorService.selectedColorChangedSubject.next(color);
-  },
-  updateEdgePointsOfCurrentColorCollection: (edgePoints: IColorEdgePoint[]) => {
-    let layer = ControlsService.selectedLayer;
+  });
+  globalColorCollections: IColorCollection[] = [];
+  selectedColorCollections: {
+    [layerId: string]: IColorCollection
+  } = {};
+  colorCollectionsForLayers: {
+    [layerId: string]: IColorCollection[]
+  } = {};
+  gradientsPerLayer: {
+    [layerId: string]: chroma.Scale
+  } = {};
+
+  constructor(private controlsService: ControlsService) {
+    this.controlsService.addLayerSubject.subscribe(layer => {
+      this.addLayer(layer);
+    })
+  }
+
+
+  public changeColor(color: any) {
+    this.selectedColorChangedSubject.next(color);
+  }
+
+  public updateEdgePointsOfCurrentColorCollection(edgePoints: IColorEdgePoint[]) {
+    let layer = this.controlsService.selectedLayer;
     if(layer) {
-      let colorCollection = ColorService.selectedColorCollections[layer.id];
+      let colorCollection = this.selectedColorCollections[layer.id];
       let xrgbaColormap = colorWrappersToXrgbaColormap(edgePoints);
       colorCollection.xrgbaColormap = xrgbaColormap;
       colorCollection.colorPickerEdgePoints = edgePoints;
-      ColorService.updateSelectedColorCollection(colorCollection);
+      this.updateSelectedColorCollection(colorCollection);
     }
-  },
-  addLayer(layer: LeafletGlVectorLayer) {
-    let colormap = ControlsService.getOptions(layer.id)?.colormap;
+  }
+
+  public addLayer(layer: LeafletGlVectorLayer) {
+    let colormap = this.controlsService.getOptions(layer.id)?.colormap;
     let colorCollection: any = {
     }
     if(colormap && Array.isArray(colormap)) {
@@ -112,94 +95,106 @@ export const ColorService: IColorService = {
       colorCollection.colorPickerEdgePoints = colormapToEdgePoints(colorCollection.xrgbaColormap);
     } else {
       colorCollection.name = '';
-      colorCollection.xrgbaColormap = ColorService.globalColorCollections[0].xrgbaColormap;
-      colorCollection.colorPickerEdgePoints = cloneDeep(ColorService.globalColorCollections[0].colorPickerEdgePoints);
+      colorCollection.xrgbaColormap = this.globalColorCollections[0].xrgbaColormap;
+      colorCollection.colorPickerEdgePoints = cloneDeep(this.globalColorCollections[0].colorPickerEdgePoints);
     }
     colorCollection as IColorCollection;
-    ColorService.selectedColorCollections[layer.id] = colorCollection;
-    ColorService.setColorCollectionsForLayer(layer, [colorCollection]);
-    ColorService.gradientsPerLayer[layer.id] = getGradientForEdgePoints(colorCollection.colorPickerEdgePoints);
+    this.selectedColorCollections[layer.id] = colorCollection;
+    this.setColorCollectionsForLayer(layer, [colorCollection]);
+    this.gradientsPerLayer[layer.id] = getGradientForEdgePoints(colorCollection.colorPickerEdgePoints);
     this.gradientSubject.next({
       layer,
-      gradient: ColorService.gradientsPerLayer[layer.id]
+      gradient: this.gradientsPerLayer[layer.id]
     });
-    if(!ControlsService.selectedLayer) {
-      ColorService.colorMapSelectedSubject.next(colorCollection);
+    if(!this.controlsService.selectedLayer) {
+      this.colorMapSelectedSubject.next(colorCollection);
     }
 
-  },
-  setGradient: (gradient: chroma.Scale, layer?: LeafletGlVectorLayer) => {
+  }
+
+  public setGradient(gradient: chroma.Scale, layer?: LeafletGlVectorLayer) {
     if (layer) {
-      ColorService.gradientsPerLayer[layer.id] = gradient;
-      ColorService.gradientSubject.next({
+      this.gradientsPerLayer[layer.id] = gradient;
+      this.gradientSubject.next({
         gradient,
         layer
       });
-    } else if (ControlsService.selectedLayer) {
-      ColorService.gradientSubject.next({
+    } else if (this.controlsService.selectedLayer) {
+      this.gradientSubject.next({
         gradient,
-        layer: ControlsService.selectedLayer
+        layer: this.controlsService.selectedLayer
       });
     } else {
       console.warn('No layer selected or given when setting gradient');
     }
-  },
-  selectColorMap: (colors: IXRGBA[]) => {
-    let layer = ControlsService.selectedLayer;
+  }
+
+  public selectColorMap(colors: IXRGBA[]) {
+    let layer = this.controlsService.selectedLayer;
     if(layer) {
-      let currentColorCollection = cloneDeep(ColorService.selectedColorCollections[layer.id]);
+      let currentColorCollection = cloneDeep(this.selectedColorCollections[layer.id]);
       currentColorCollection.xrgbaColormap = colors;
       currentColorCollection.colorPickerEdgePoints = colormapToEdgePoints(colors);
-      ColorService.updateSelectedColorCollection(currentColorCollection);
-      ColorService.colorMapSelectedSubject.next(currentColorCollection);
+      this.updateSelectedColorCollection(currentColorCollection);
+      this.colorMapSelectedSubject.next(currentColorCollection);
     }
-  },
-  updateSelectedColorCollection: (colorCollection: IColorCollection) => {
-    let layer = ControlsService.selectedLayer;
+  }
+
+  public updateSelectedColorCollection(colorCollection: IColorCollection) {
+    let layer = this.controlsService.selectedLayer;
     if(layer) {
-      ColorService.selectedColorCollections[layer.id] = cloneDeep(colorCollection);
-      ColorService.setGradient(getGradientForEdgePoints(colorCollection.colorPickerEdgePoints));
+      this.selectedColorCollections[layer.id] = cloneDeep(colorCollection);
+      this.setGradient(getGradientForEdgePoints(colorCollection.colorPickerEdgePoints));
     }
-  },
-  closeColorPickerDialog: (reset: boolean) => {
-    ColorService.colorPickerDialogSubject.next({isReset: reset, isOpen: false});
-  },
-  openColorPickerDialog: () => {
-    ColorService.colorPickerDialogSubject.next({isReset: false, isOpen: true});
-  },
-  selectColorSlider: (slider: IColorSlider) => {
-    ColorService.selectedColorSliderSubject.next(slider);
-  },
-  setColorCollectionsForLayer: (layer: LeafletGlVectorLayer, colorCollections: IColorCollection[]) => {
-    ColorService.colorCollectionsForLayers[layer.id] = colorCollections;
-  },
-  setGlobalColorCollections: (colorCollections: IColorCollection[]) => {
-    ColorService.globalColorCollections = colorCollections;
-  },
-  getAllColorCollections: () => {
-    let layer = ControlsService.selectedLayer;
+  }
+
+  public closeColorPickerDialog(reset: boolean) {
+    this.colorPickerDialogSubject.next({isReset: reset, isOpen: false});
+  }
+
+  public openColorPickerDialog() {
+    this.colorPickerDialogSubject.next({isReset: false, isOpen: true});
+  }
+
+  public selectColorSlider(slider: IColorSlider) {
+    this.selectedColorSliderSubject.next(slider);
+  }
+
+  public setColorCollectionsForLayer(layer: LeafletGlVectorLayer, colorCollections: IColorCollection[]) {
+    this.colorCollectionsForLayers[layer.id] = colorCollections;
+  }
+
+  public setGlobalColorCollections(colorCollections: IColorCollection[]) {
+    this.globalColorCollections = colorCollections;
+  }
+
+  public getAllColorCollections () {
+    let layer = this.controlsService.selectedLayer;
     if(layer) {
-      return ColorService.colorCollectionsForLayers[layer.id].concat(ColorService.globalColorCollections);
+      return this.colorCollectionsForLayers[layer.id].concat(this.globalColorCollections);
     } else {
       return [];
     }
-  },
-  getSelectedColorCollection: (): IColorCollection|null => {
-    let layer = ControlsService.selectedLayer;
+  }
+
+  public getSelectedColorCollection(): IColorCollection|null {
+    let layer = this.controlsService.selectedLayer;
     if(layer) {
-      return ColorService.selectedColorCollections[layer.id];
+      return this.selectedColorCollections[layer.id];
     } else {
       return null;
     }
-  },
-  cleanUp: (clearSubjects: boolean = false) => {
+  }
+
+  public cleanUp(clearSubjects: boolean = false) {
     if(clearSubjects) {
-      ColorService.colorPickerDialogSubject.complete();
-      ColorService.selectedColorSliderSubject.complete();
-      ColorService.colorMapSelectedSubject.complete();
-      ColorService.selectedColorChangedSubject.complete();
-      ColorService.gradientSubject.complete();
+      this.colorPickerDialogSubject.complete();
+      this.selectedColorSliderSubject.complete();
+      this.colorMapSelectedSubject.complete();
+      this.selectedColorChangedSubject.complete();
+      this.gradientSubject.complete();
     }
-  },
+  }
+
 }
 

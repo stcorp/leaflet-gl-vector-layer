@@ -15,22 +15,22 @@ export class LayerControl {
   private layers: LeafletGlVectorLayer[] = [];
   private selectedLayer: LeafletGlVectorLayer|undefined;
 
-  constructor() {
+  constructor(private controlsService: ControlsService) {
     this.container = L.DomUtil.create('div', 'layer-selection-container');
     let layerSelectionHeader = L.DomUtil.create('div', 'control-section-header', this.container);
     layerSelectionHeader.innerHTML = 'Select and show/hide layers';
     let layerCheckboxContainer = L.DomUtil.create('div', 'layer-checkbox-container', this.container);
 
-    this.selectedLayer = ControlsService.selectedLayer;
-    this.layers = ControlsService.getCurrentLayers();
-    let currentLayerSubscription = ControlsService.currentLayerSubject.subscribe((layers: LeafletGlVectorLayer[]) => {
+    this.selectedLayer = this.controlsService.selectedLayer;
+    this.layers = this.controlsService.getCurrentLayers();
+    let currentLayerSubscription = this.controlsService.currentLayerSubject.subscribe((layers: LeafletGlVectorLayer[]) => {
       this.layers = layers;
       layerCheckboxContainer.replaceChildren();
       for(let i = 0; i < this.layers.length; i++) {
         this.createLayerToggleCheckbox(this.layers[i], i + 1, layerCheckboxContainer);
       }
     });
-    let selectLayerSubscription = ControlsService.selectLayerSubject.subscribe((layer: LeafletGlVectorLayer) => {
+    let selectLayerSubscription = this.controlsService.selectLayerSubject.subscribe((layer: LeafletGlVectorLayer) => {
       this.selectedLayer = layer;
     });
 
@@ -59,7 +59,7 @@ export class LayerControl {
       element: label,
       func: (event: any) => {
         event.stopPropagation();
-        ControlsService.selectLayer(layer);
+        this.controlsService.selectLayer(layer);
       },
       type: 'click'
     }

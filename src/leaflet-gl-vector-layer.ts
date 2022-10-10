@@ -32,18 +32,25 @@ export class LeafletGlVectorLayer extends L.GridLayer {
     public renderer: SwathRenderer|GridRenderer|PointsRenderer|undefined;
     private _paneName: string = 'overlayPane';
     public dataHelper: DataHelper;
-    public options: ExtendedOptions;
     public id: string;
     public currentGradient: chroma.Scale|undefined;
     private isFirstRun = true;
     public isHidden = false;
     private subscriptions: Subscription[] = [];
     private handlers: IHandler[] = [];
+    private controlsService: ControlsService;
+    private colorService: ColorService;
+    private options: ExtendedOptions;
     constructor(newOptions: ExtendedOptions) {
         super(newOptions);
         this.id = guidGenerator();
-        ControlsService.setOptions(this.id, newOptions.leafletGlVectorLayerOptions);
         setOptions(this, {...this.options, leafletGlVectorLayerOptions: newOptions.leafletGlVectorLayerOptions});
+    }
+
+    public addServices(controlsService: ControlsService, colorService: ColorService) {
+        this.controlsService = controlsService;
+        this.colorService = colorService;
+        this.controlsService.setOptions(this.id, this.options.leafletGlVectorLayerOptions);
     }
 
     public onRemove(map: Map) {
@@ -132,24 +139,24 @@ export class LeafletGlVectorLayer extends L.GridLayer {
 
         this._reset();
         this.renderer.bindBuffers();
-        let gradientSubscription = ColorService.gradientSubject.pipe(filter(data => {
+        let gradientSubscription = this.colorService.gradientSubject.pipe(filter(data => {
             return data.layer.id === this.id;
         })).subscribe(data => {
             this.currentGradient = data.gradient;
             this.updateColors(data);
         })
-        let limitsSubscription = ControlsService.limitsSubject.subscribe(data => {
+        let limitsSubscription = this.controlsService.limitsSubject.subscribe(data => {
             this.updateValues(data);
         })
 
-        let hideLayerSubscription = ControlsService.hideLayerSubject.subscribe((layer: LeafletGlVectorLayer) => {
+        let hideLayerSubscription = this.controlsService.hideLayerSubject.subscribe((layer: LeafletGlVectorLayer) => {
             if(layer.id === this.id) {
                 this.isHidden = true;
                 this.canvas.style.opacity = '0';
             }
         });
 
-        let showLayerSubscription = ControlsService.showLayerSubject.subscribe((layer: LeafletGlVectorLayer) => {
+        let showLayerSubscription = this.controlsService.showLayerSubject.subscribe((layer: LeafletGlVectorLayer) => {
             if(layer.id === this.id) {
                 this.isHidden = false;
                 this.canvas.style.opacity = `${this.options.opacity ?? 1}`;
@@ -198,7 +205,7 @@ export class LeafletGlVectorLayer extends L.GridLayer {
     }
 
     private updateValues(data: ILimitsSubject): void {
-        if(ControlsService.selectedLayer?.id === this.id) {
+        if(this.controlsService.selectedLayer?.id === this.id) {
             this.dataHelper.updateLimits(data);
             this.renderer?.processData(this.updateRender.bind(this));
         }

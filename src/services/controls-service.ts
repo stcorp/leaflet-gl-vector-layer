@@ -14,88 +14,77 @@ export interface ILimitsSubject {
   min: number;
   max: number;
 }
-export interface IControlsService {
-  selectedLayer: LeafletGlVectorLayer|undefined;
-  limitsSubject: Subject<ILimitsSubject>;
-  selectLayerSubject: Subject<LeafletGlVectorLayer>;
-  addLayerSubject: Subject<LeafletGlVectorLayer>;
-  showLayerSubject: Subject<LeafletGlVectorLayer>;
-  hideLayerSubject: Subject<LeafletGlVectorLayer>;
-  currentLayerSubject: BehaviorSubject<LeafletGlVectorLayer[]>;
-  selectLayer: (layer: LeafletGlVectorLayer) => void;
-  addLayer: (layer: LeafletGlVectorLayer) => void;
-  showLayer: (layer: LeafletGlVectorLayer) => void;
-  hideLayer: (layer: LeafletGlVectorLayer) => void;
-  setLimits: (limits: ILimitsSubject) => void;
-  cleanUp: (clearSubjects: boolean) => void;
-  currentLayers: LeafletGlVectorLayer[];
-  options: {
-    [x: string]: LeafletGlVectorLayerOptions
-  };
-  setOptions: (layerId: string, options: LeafletGlVectorLayerOptions) => void;
-  getCurrentLayers: () => LeafletGlVectorLayer[];
-  getOptions: (layerId?: string) => LeafletGlVectorLayerOptions|undefined;
 
-}
+export class ControlsService {
+  public limitsSubject = new Subject<ILimitsSubject>();
+  public selectLayerSubject = new Subject<LeafletGlVectorLayer>();
+  public addLayerSubject = new Subject<LeafletGlVectorLayer>();
+  public currentLayerSubject = new BehaviorSubject<LeafletGlVectorLayer[]>([]);
+  public showLayerSubject = new Subject<LeafletGlVectorLayer>();
+  public hideLayerSubject = new Subject<LeafletGlVectorLayer>();
 
-export const ControlsService: IControlsService = {
-  limitsSubject: new Subject<ILimitsSubject>(),
-  selectLayerSubject: new Subject<LeafletGlVectorLayer>(),
-  addLayerSubject: new Subject<LeafletGlVectorLayer>(),
-  currentLayerSubject: new BehaviorSubject<LeafletGlVectorLayer[]>([]),
-  showLayerSubject: new Subject<LeafletGlVectorLayer>(),
-  hideLayerSubject: new Subject<LeafletGlVectorLayer>(),
-  selectedLayer: undefined,
-  currentLayers: [],
-  options: {},
+  public selectedLayer: LeafletGlVectorLayer|undefined;
+  public currentLayers: LeafletGlVectorLayer[] = [];
+  public options: any = {};
 
-  selectLayer: (layer: LeafletGlVectorLayer) => {
-    ControlsService.selectedLayer = layer;
-    ControlsService.selectLayerSubject.next(layer);
-  },
-  addLayer: (layer: LeafletGlVectorLayer) => {
-    ControlsService.addLayerSubject.next(layer);
-    ControlsService.currentLayers.push(layer);
-    ControlsService.currentLayerSubject.next(ControlsService.currentLayers);
-    ColorService.addLayer(layer);
-  },
-  showLayer: (layer: LeafletGlVectorLayer) => {
-    ControlsService.showLayerSubject.next(layer);
-  },
-  hideLayer: (layer: LeafletGlVectorLayer) => {
-    ControlsService.hideLayerSubject.next(layer);
-  },
-  setLimits: (limits: ILimitsSubject) => {
-    ControlsService.limitsSubject.next(limits);
-  },
-  setOptions: (layerId: string, newOptions: LeafletGlVectorLayerOptions) => {
-    ControlsService.options[layerId] = newOptions;
-  },
-  getOptions: (layerId?: string) => {
+  constructor() {
+
+  }
+
+  public selectLayer(layer: LeafletGlVectorLayer) {
+    this.selectedLayer = layer;
+    this.selectLayerSubject.next(layer);
+  }
+
+  public addLayer(layer: LeafletGlVectorLayer) {
+    this.addLayerSubject.next(layer);
+    this.currentLayers.push(layer);
+    this.currentLayerSubject.next(this.currentLayers);
+  }
+
+  public showLayer(layer: LeafletGlVectorLayer) {
+    this.showLayerSubject.next(layer);
+  }
+
+  public hideLayer(layer: LeafletGlVectorLayer) {
+    this.hideLayerSubject.next(layer);
+  }
+
+  public setLimits(limits: ILimitsSubject) {
+    this.limitsSubject.next(limits);
+  }
+
+  public setOptions(layerId: string, newOptions: LeafletGlVectorLayerOptions) {
+    this.options[layerId] = newOptions;
+  }
+
+  public getOptions(layerId?: string) {
     if(!layerId) {
-      if(ControlsService.selectedLayer) {
-        return ControlsService.options[ControlsService.selectedLayer.id];
+      if(this.selectedLayer) {
+        return this.options[this.selectedLayer.id];
       } else {
         return undefined;
       }
     }
-    return ControlsService.options[layerId];
-  },
-  getCurrentLayers: (): LeafletGlVectorLayer[] => {
-    return ControlsService.currentLayers;
-  },
-  cleanUp: (clearSubjects: boolean = false) => {
+    return this.options[layerId];
+  }
+
+  public getCurrentLayers() {
+    return this.currentLayers;
+  }
+
+  public cleanUp(clearSubjects: boolean = false) {
     if(clearSubjects) {
-      ControlsService.currentLayerSubject.next([]);
-      ControlsService.currentLayerSubject.complete();
-      ControlsService.selectLayerSubject.complete();
-      ControlsService.addLayerSubject.complete();
-      ControlsService.limitsSubject.complete();
-      ControlsService.showLayerSubject.complete();
-      ControlsService.hideLayerSubject.complete();
+      this.currentLayerSubject.next([]);
+      this.currentLayerSubject.complete();
+      this.selectLayerSubject.complete();
+      this.addLayerSubject.complete();
+      this.limitsSubject.complete();
+      this.showLayerSubject.complete();
+      this.hideLayerSubject.complete();
     }
 
-    ControlsService.selectedLayer = undefined;
-    ControlsService.currentLayers = [];
+    this.selectedLayer = undefined;
+    this.currentLayers = [];
   }
 }
