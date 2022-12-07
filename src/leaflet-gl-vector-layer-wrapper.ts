@@ -18,6 +18,12 @@ export class LeafletGlVectorLayerWrapper extends L.Layer {
   public map: L.Map;
   private controlsService = new ControlsService();
   private colorService = new ColorService(this.controlsService);
+  // For removing event listeners
+  private onMouseOverControlsFunction = this.onMouseOverControls.bind(this);
+  private onMouseOutControlsFunction = this.onMouseOutControls.bind(this);
+
+
+
   constructor(private options: LeafletGlVectorLayerWrapperOptions) {
     super();
     this.cleanUp();
@@ -73,6 +79,11 @@ export class LeafletGlVectorLayerWrapper extends L.Layer {
   }
 
   private cleanUp(clearSubjects: boolean = false) {
+    if(this.controls?.controlWrapperInnerContainer) {
+      this.controls.controlWrapperInnerContainer.removeEventListener('mouseover', this.onMouseOverControlsFunction)
+      this.controls.controlWrapperInnerContainer.removeEventListener('mouseout', this.onMouseOutControlsFunction);
+    }
+
 
     this.controlsService.cleanUp(clearSubjects);
     this.colorService.cleanUp(clearSubjects);
@@ -114,7 +125,17 @@ export class LeafletGlVectorLayerWrapper extends L.Layer {
       this.controlsService.selectLayer(layer);
       this.controls = new LeafletGlVectorLayerControls(this.controlsService, this.colorService);
       this.controls.addTo(this.map);
+      this.controls.controlWrapperInnerContainer.addEventListener('mouseover', this.onMouseOverControlsFunction)
+      this.controls.controlWrapperInnerContainer.addEventListener('mouseout', this.onMouseOutControlsFunction);
     }
     return this;
+  }
+
+  private onMouseOverControls() {
+    this.map.dragging.disable();
+  }
+
+  private onMouseOutControls() {
+    this.map.dragging.enable();
   }
 }
