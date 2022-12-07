@@ -1,6 +1,6 @@
 {
   "name": "@stcorp/leaflet-gl-vector-layer",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "A GL-powered vector layer for leaflet",
   "main": "./dist/index.es.js",
   "module": "./dist/index.es.js",
