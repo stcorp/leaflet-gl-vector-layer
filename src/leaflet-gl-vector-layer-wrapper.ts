@@ -6,9 +6,10 @@ import { ColorService, IColorCollection } from './services/color-service';
 import { IColor, IColorMap, IRGBA, IXRGBA } from './types/colors';
 import { colormapToXrgbaColormap, fromRGBToWebGl } from './helpers/color-transformers';
 import { colormapToEdgePoints } from './helpers/color-transformers';
+import { isListOfColorMaps } from './helpers/color-map-guard';
 
 export interface LeafletGlVectorLayerWrapperOptions {
-  colormaps?: IColorMap[];
+  colormaps?: IColorMap[]|IColorMap;
 }
 
 export class LeafletGlVectorLayerWrapper extends L.Layer {
@@ -28,7 +29,7 @@ export class LeafletGlVectorLayerWrapper extends L.Layer {
     super();
     this.cleanUp();
 
-    let colorCollections = [];
+    let colorCollections: IColorCollection[] = [];
     const defaultColorMaps = ([
       [[0, 0, 0, 1], [0, 64, 129, 1], [0, 108, 217, 1], [0, 184, 255, 1], [0, 230, 255, 1], [90, 255, 166, 1], [229, 255, 26, 1], [255, 186, 0, 1], [255, 0, 0, 1]],
       [[232, 236, 251, 1], [143, 86, 159, 1], [78, 149, 189, 1], [115, 181, 131, 1], [201, 184, 67, 1], [229, 115, 48, 1], [206, 34, 33, 1], [111, 29, 22, 1]]
@@ -49,25 +50,16 @@ export class LeafletGlVectorLayerWrapper extends L.Layer {
     let colormaps = this.options.colormaps;
 
     if(colormaps && colormaps.length) {
-      for(let colormap of colormaps) {
-        let colorCollection;
-        let xrgbaColormap;
-        let colorPickerEdgePoints;
-        if(Array.isArray(colormap) && colormap.length) {
-          let colors;
-          if(colormap.length && typeof colormap[0] === 'string') {
-            colors = colormap[1] as IColor[];
-          } else {
-            colors = colormap as IColor[];
+      if(isListOfColorMaps(colormaps)) {
+        for(let colormap of (colormaps as IColorMap[])) {
+          let colorCollection = this.processColorMap(colormap);
+          if(colorCollection) {
+            colorCollections.push(colorCollection);
           }
-          xrgbaColormap = colormapToXrgbaColormap(colors)
-          colorPickerEdgePoints = colormapToEdgePoints(xrgbaColormap);
-          colorCollection = {
-            name: '',
-            xrgbaColormap,
-            colorPickerEdgePoints,
-            colormap: colormap
-          } as IColorCollection
+        }
+      } else {
+        let colorCollection = this.processColorMap(colormaps as IColorMap);
+        if(colorCollection) {
           colorCollections.push(colorCollection);
         }
       }
@@ -76,6 +68,29 @@ export class LeafletGlVectorLayerWrapper extends L.Layer {
     window.onbeforeunload = () => {
       this.cleanUp(true);
     }
+  }
+
+  private processColorMap(colormap: IColorMap): IColorCollection|undefined {
+    let colorCollection;
+    let xrgbaColormap;
+    let colorPickerEdgePoints;
+    if(Array.isArray(colormap) && colormap.length) {
+      let colors;
+      if(colormap.length && typeof colormap[0] === 'string') {
+        colors = colormap[1] as IColor[];
+      } else {
+        colors = colormap as IColor[];
+      }
+      xrgbaColormap = colormapToXrgbaColormap(colors)
+      colorPickerEdgePoints = colormapToEdgePoints(xrgbaColormap);
+      colorCollection = {
+        name: '',
+        xrgbaColormap,
+        colorPickerEdgePoints,
+        colormap: colormap
+      } as IColorCollection
+    }
+    return colorCollection;
   }
 
   private cleanUp(clearSubjects: boolean = false) {
