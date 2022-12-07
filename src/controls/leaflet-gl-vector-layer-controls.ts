@@ -12,7 +12,7 @@ import debounce from 'lodash/debounce';
 
 export class LeafletGlVectorLayerControls extends L.Control {
   private controlWrapperOuterContainer: HTMLElement;
-  private controlWrapperInnerContainer: HTMLElement;
+  public controlWrapperInnerContainer: HTMLElement;
   private controlWrapperContentContainer: HTMLElement;
   private toggleButton: HTMLElement;
   private toggleButtonInner: HTMLElement;
