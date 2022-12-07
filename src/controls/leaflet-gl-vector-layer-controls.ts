@@ -8,6 +8,7 @@ import { LayerControl } from './layer.control';
 import { ColorPickerDialogControl } from './color-picker-dialog.control';
 import { ColorService, IColorSlider } from '../services/color-service';
 import { IroColor } from '@irojs/iro-core/dist/color';
+import debounce from 'lodash/debounce';
 
 export class LeafletGlVectorLayerControls extends L.Control {
   private controlWrapperOuterContainer: HTMLElement;
@@ -27,9 +28,11 @@ export class LeafletGlVectorLayerControls extends L.Control {
   private colorPickerSubscription: Subscription;
   public map: L.Map|undefined;
   private subscriptions: Subscription[] = [];
+  private debouncedOnToggleClick: any;
 
   constructor(private controlsService: ControlsService, private colorService: ColorService) {
     super();
+    this.debouncedOnToggleClick = debounce(this.onToggleClick.bind(this), 10);
 
     let colorSliderSubscription = this.colorService.selectedColorSliderSubject.subscribe((colorSlider: IColorSlider) => {
       this.updateColorPicker(colorSlider);
@@ -211,11 +214,13 @@ export class LeafletGlVectorLayerControls extends L.Control {
     L.DomEvent.disableClickPropagation(this.toggleButton);
 
 
-    this.toggleButton?.addEventListener('click', (event) => {
-      this.colorPickerDialogControl.hide();
-      this.toggleButton.classList.toggle('toggled');
-      this.controlWrapperInnerContainer.classList.toggle('show');
-    })
+    this.toggleButton?.addEventListener('click', this.debouncedOnToggleClick.bind(this));
+  }
+
+  private onToggleClick() {
+    this.colorPickerDialogControl.hide();
+    this.toggleButton.classList.toggle('toggled');
+    this.controlWrapperInnerContainer.classList.toggle('show');
   }
 
   public onRemove() {
