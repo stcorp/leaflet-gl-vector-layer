@@ -1,7 +1,7 @@
 import * as L from 'leaflet';
 import { ControlsService } from '../services/controls-service';
 import { LeafletGlVectorLayer } from '../leaflet-gl-vector-layer';
-import { Subscription } from 'rxjs';
+import { ReplaySubject, takeUntil } from 'rxjs';
 import { ColorControl } from './color.control';
 import { ColorMapControl, IColorMapWrapper } from './color-map.control';
 import { LayerControl } from './layer.control';
@@ -9,6 +9,7 @@ import { ColorPickerDialogControl } from './color-picker-dialog.control';
 import { ColorService, IColorSlider } from '../services/color-service';
 import { IroColor } from '@irojs/iro-core/dist/color';
 import debounce from 'lodash/debounce';
+import { ColorBar } from './color-bar';
 
 export class LeafletGlVectorLayerControls extends L.Control {
   private controlWrapperOuterContainer: HTMLElement;
@@ -23,37 +24,35 @@ export class LeafletGlVectorLayerControls extends L.Control {
   private colorMapControl: ColorMapControl;
   private layerControl: LayerControl;
   private colorPickerDialogControl: ColorPickerDialogControl;
+  private colorBar: ColorBar;
 
   private layers: LeafletGlVectorLayer[] = [];
-  private colorPickerSubscription: Subscription;
   public map: L.Map|undefined;
-  private subscriptions: Subscription[] = [];
   private debouncedOnToggleClick: any;
+  private destroyed$ = new ReplaySubject(1);
 
   constructor(private controlsService: ControlsService, private colorService: ColorService) {
     super();
     this.debouncedOnToggleClick = debounce(this.onToggleClick.bind(this), 10);
 
-    let colorSliderSubscription = this.colorService.selectedColorSliderSubject.subscribe((colorSlider: IColorSlider) => {
+    this.colorService.selectedColorSlider$.pipe(takeUntil(this.destroyed$)).subscribe((colorSlider: IColorSlider) => {
       this.updateColorPicker(colorSlider);
     })
 
-    let selectlayerSubscription = this.controlsService.selectLayerSubject.subscribe((layer: LeafletGlVectorLayer) => {
+    this.controlsService.layerSelected$.pipe(takeUntil(this.destroyed$)).subscribe((layer: LeafletGlVectorLayer) => {
       this.onLayerSelected();
     });
-    let addLayerSubscription = this.controlsService.addLayerSubject.subscribe((layer: LeafletGlVectorLayer) => {
+    this.controlsService.addLayer$.pipe(takeUntil(this.destroyed$)).subscribe((layer: LeafletGlVectorLayer) => {
       this.onLayerAdded(layer);
     });
 
-    let colorPickerDialogSubscription = this.colorService.colorPickerDialogSubject.subscribe(data => {
+    this.colorService.colorPickerDialog$.pipe(takeUntil(this.destroyed$)).subscribe(data => {
       if(data.isOpen) {
         this.colorPickerDialogControl.show();
       } else {
         this.colorPickerDialogControl.hide();
       }
     })
-
-    this.subscriptions.push(colorSliderSubscription, selectlayerSubscription, addLayerSubscription, colorPickerDialogSubscription);
   }
 
   public addTo(map: L.Map) {
@@ -71,25 +70,27 @@ export class LeafletGlVectorLayerControls extends L.Control {
     this.toggleButtonInner = L.DomUtil.create('div', 'toggle-button-inner main-toggle-inner', this.toggleButton);
     this.createColorDialogControl();
     this.addStaticEventListeners();
-    this.onLayerSelected();
     return this;
   }
 
   private createColorDialogControl() {
     this.colorPickerDialogControl = new ColorPickerDialogControl();
     this.colorPickerDialogControl.attachTo(this.controlWrapperOuterContainer);
-    let colorPickerDialogControlSubscription = this.colorPickerDialogControl.toggled$.subscribe((data: {isOpen: boolean, cancel: boolean}) => {
+    this.colorPickerDialogControl.toggled$.pipe(
+      takeUntil(this.destroyed$)
+    ).subscribe((data: {isOpen: boolean, cancel: boolean}) => {
       if(data.isOpen) {
         this.colorService.openColorPickerDialog();
       } else {
         this.colorService.closeColorPickerDialog(data.cancel);
       }
     })
-    let colorChangedSubscription = this.colorPickerDialogControl.colorChanged$.subscribe((color: IroColor) => {
+    this.colorPickerDialogControl.colorChanged$.pipe(
+      takeUntil(this.destroyed$)
+    ).subscribe((color: IroColor) => {
       this.colorService.changeColor(color);
     })
 
-    this.subscriptions.push(colorPickerDialogControlSubscription, colorChangedSubscription);
   }
 
   private updateColorPicker(colorSlider: IColorSlider) {
@@ -106,22 +107,16 @@ export class LeafletGlVectorLayerControls extends L.Control {
   }
 
   public onLayerSelected() {
-    if(this.colorPickerSubscription) {
-      this.colorPickerSubscription.unsubscribe();
-    }
     this.cleanUpDynamicControls();
-
     this.controlWrapperContentContainer.replaceChildren();
     this.createDynamicControls();
   }
 
   public cleanUp() {
+    this.destroyed$.next(true);
+    this.destroyed$.complete();
     this.cleanUpDynamicControls();
-    for(let subscription of this.subscriptions) {
-      subscription.unsubscribe();
-    }
     this.colorControl.cleanUp();
-    this.subscriptions = [];
     this.mapContainer = undefined;
     this.map = undefined;
     this.layers = [];
@@ -144,6 +139,7 @@ export class LeafletGlVectorLayerControls extends L.Control {
     this.createColorControl();
     this.createColorMapControl();
     this.createLayerControl();
+    this.createColorBar();
     let selectedColorCollection = this.colorService.getSelectedColorCollection();
     if(selectedColorCollection) {
       this.colorService.selectColorMap(selectedColorCollection.xrgbaColormap);
@@ -152,6 +148,11 @@ export class LeafletGlVectorLayerControls extends L.Control {
 
   public onLayerAdded(layer: LeafletGlVectorLayer) {
     this.layers.push(layer);
+  }
+
+  private createColorBar() {
+    this.colorBar = new ColorBar(this.colorService, this.controlsService);
+    this.controlWrapperOuterContainer.appendChild(this.colorBar.getContainer());
   }
 
 
@@ -173,7 +174,9 @@ export class LeafletGlVectorLayerControls extends L.Control {
       defaultColorMap: colormaps[0].xrgbaColormap
     });
 
-    this.colorMapControl.colorMap$.subscribe((colorMapWrapper: IColorMapWrapper) => {
+    this.colorMapControl.colorMap$.pipe(
+      takeUntil(this.destroyed$)
+    ).subscribe((colorMapWrapper: IColorMapWrapper) => {
       this.colorService.selectColorMap(colorMapWrapper.colors);
     });
     this.controlWrapperContentContainer.appendChild(this.colorMapControl.getContainer());

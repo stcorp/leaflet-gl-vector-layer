@@ -2,7 +2,7 @@ import { guidGenerator } from '../helpers/guid-generator';
 import * as L from 'leaflet';
 import { ColorService, IColorEdgePoint, IColorSlider } from '../services/color-service';
 import { IHandler } from '../types/handlers';
-import { Subject, Subscription } from 'rxjs';
+import { ReplaySubject, Subject, Subscription, takeUntil } from 'rxjs';
 import { IroColor } from '@irojs/iro-core/dist/color';
 import { IRGBA } from '../types/colors';
 import { getGradientForEdgePoints } from '../helpers/color-transformers';
@@ -12,7 +12,7 @@ export class ColorPicker {
   private innerContainer: HTMLElement;
   private colorPickerContainer: HTMLElement;
   private gradientContainer: HTMLElement;
-  private gradientElement: HTMLElement;
+  private gradientElement: HTMLCanvasElement;
   private colorInputContainer: HTMLElement;
   private gradientStopDeleteButton: HTMLElement;
   private colorInput: HTMLElement
@@ -22,17 +22,26 @@ export class ColorPicker {
   private previousStopColor: IRGBA|null|undefined;
   private handlers: IHandler[] = [];
   private subscriptions: Subscription[] = [];
+  private destroyed$ = new ReplaySubject(1);
+  private gradient: chroma.Scale;
   public colorEdgePoints: IColorEdgePoint[] = [];
   public colorSliders: IColorSlider[] = [];
   public colorEdgePointsUpdated$ = this.colorEdgePointsUpdateSubject.asObservable();
 
   constructor(private colorService: ColorService) {
-    let selectedColorChangedSubscription = this.colorService.selectedColorChangedSubject.subscribe((color: any) => {
+    let selectedColorChangedSubscription = this.colorService.selectedColorChanged$.subscribe((color: any) => {
       this.onSelectedColorChange(color);
     });
-    let colorPickerDialogSubscription = this.colorService.colorPickerDialogSubject.subscribe(data => {
+    let colorPickerDialogSubscription = this.colorService.colorPickerDialog$.subscribe(data => {
       this.onColorPickerDialogClose(data.isReset);
     });
+
+    this.colorService.gradient$.pipe(
+      takeUntil(this.destroyed$),
+    ).subscribe((gradientData) => {
+      this.gradient = gradientData.gradient;
+      this.updateGradientElement();
+    })
 
     this.subscriptions.push(selectedColorChangedSubscription);
     this.subscriptions.push(colorPickerDialogSubscription);
@@ -66,7 +75,7 @@ export class ColorPicker {
     this.colorInput = L.DomUtil.create('div', 'color-input-inner', this.colorInputContainer)
     this.gradientStopDeleteButton = L.DomUtil.create('div', 'gradient-stop-delete-button disabled', this.colorInputContainer)
     this.gradientContainer = L.DomUtil.create('div', 'gradient-container', this.colorPickerContainer);
-    this.gradientElement = L.DomUtil.create('div', 'gradient-element', this.gradientContainer);
+    this.gradientElement = L.DomUtil.create('canvas', 'gradient-element', this.gradientContainer);
     this.addEventListeners();
     return this.innerContainer;
   }
@@ -224,13 +233,26 @@ export class ColorPicker {
     if(!this.gradientElement) {
       return;
     }
-    let linearGradientString = 'linear-gradient(to right';
-    for(let i = 0; i < this.colorEdgePoints.length ; i++) {
-      let rgba = this.colorEdgePoints[i].color;
-      let suffix = `, rgba(${rgba}) ${this.colorEdgePoints[i].value * 100}%`
-      linearGradientString += suffix;
+    let context = this.gradientElement.getContext('2d');
+    if(context) {
+      context.clearRect(0, 0, this.gradientElement.width, this.gradientElement.height);
+      let gradient = context.createLinearGradient(0, 0, this.gradientElement.width, 0);
+
+      if(context) {
+        context.clearRect(0, 0, this.gradientElement.width, this.gradientElement.height);
+        let gradient = context.createLinearGradient(0, 0, this.gradientElement.width, 0);
+        for(let i = 0; i <= 255; i++) {
+          context.beginPath();
+          var color = this.gradient(i / 255).rgba();
+          gradient.addColorStop(i / 255, `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3]})`)
+        }
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, this.gradientElement.width, this.gradientElement.height);
+      }
+
+      context.fillStyle = gradient;
+      context.fillRect(0, 0, this.gradientElement.width, this.gradientElement.height);
     }
-    this.gradientElement.style.setProperty("--gradient-element-background", linearGradientString);
 
     if(this.colorSliders.length > 2) {
       this.gradientStopDeleteButton.classList.remove('disabled');

@@ -1,7 +1,7 @@
 import * as L from 'leaflet';
 import { LeafletGlVectorLayer } from '../leaflet-gl-vector-layer';
 import { ControlsService } from '../services/controls-service';
-import { Subject, Subscription } from 'rxjs';
+import { ReplaySubject, Subject, Subscription, takeUntil } from 'rxjs';
 import { IHandler } from '../types/handlers';
 
 export class LayerControl {
@@ -14,6 +14,7 @@ export class LayerControl {
   private subscriptions: Subscription[] = [];
   private layers: LeafletGlVectorLayer[] = [];
   private selectedLayer: LeafletGlVectorLayer|undefined;
+  private destroyed$ = new ReplaySubject(1);
 
   constructor(private controlsService: ControlsService) {
     this.container = L.DomUtil.create('div', 'layer-selection-container');
@@ -23,19 +24,20 @@ export class LayerControl {
 
     this.selectedLayer = this.controlsService.selectedLayer;
     this.layers = this.controlsService.getCurrentLayers();
-    let currentLayerSubscription = this.controlsService.currentLayerSubject.subscribe((layers: LeafletGlVectorLayer[]) => {
+    this.controlsService.currentLayers$.pipe(
+      takeUntil(this.destroyed$)
+    ).subscribe((layers: LeafletGlVectorLayer[]) => {
       this.layers = layers;
       layerCheckboxContainer.replaceChildren();
       for(let i = 0; i < this.layers.length; i++) {
         this.createLayerToggleCheckbox(this.layers[i], i + 1, layerCheckboxContainer);
       }
     });
-    let selectLayerSubscription = this.controlsService.selectLayerSubject.subscribe((layer: LeafletGlVectorLayer) => {
+    this.controlsService.layerSelected$.pipe(
+      takeUntil(this.destroyed$)
+    ).subscribe((layer: LeafletGlVectorLayer) => {
       this.selectedLayer = layer;
     });
-
-    this.subscriptions.push(currentLayerSubscription);
-    this.subscriptions.push(selectLayerSubscription);
   }
 
   public getContainer() {
@@ -90,15 +92,13 @@ export class LayerControl {
   }
 
   public cleanUp() {
+    this.destroyed$.next(true);
+    this.destroyed$.complete();
     for(let handler of this.handlers) {
       if(handler.element) {
         handler.element.removeEventListener(handler.type, handler.func);
       }
     }
-    for(let subscription of this.subscriptions) {
-      subscription.unsubscribe();
-    }
-    this.subscriptions = [];
     this.layers = [];
     this.handlers = [];
     this.selectedLayer = undefined;

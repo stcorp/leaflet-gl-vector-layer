@@ -269,6 +269,78 @@
   position: relative;
   height: 100%;
   width: 100%;
+  z-index: 999;
+
+  .color-bar-wrapper {
+    display: flex;
+    width: 200px;
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+
+    .color-bar-inner-container {
+      padding: 10px;
+      flex: 1;
+      display: flex;
+
+      .color-bar-bar-wrapper {
+        height: 40px;
+        width: 100%;
+        display: flex;
+        flex: 1;
+        align-items: center;
+        position: relative;
+        justify-content: center;
+
+        .color-bar-label {
+          position: absolute;
+          top: -20px;
+        }
+
+        .color-bar-tick-container {
+          position: absolute;
+          bottom: -20px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+
+          .tick-wrapper {
+            width: 1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            position: relative;
+            height: 20px;
+
+            .tick-bar {
+              width: 1px;
+              flex: 0 0 50%;
+              background-color: black;
+              height: 50%;
+            }
+
+            .tick {
+              flex: 0 0 50%;
+              color: black;
+              filter: drop-shadow(1px 1px 0px grey);
+              white-space: nowrap;
+            }
+          }
+
+
+        }
+
+        .color-bar {
+          flex: 1;
+          display: flex;
+          height: 30px;
+          width: 100%;
+        }
+      }
+    }
+  }
 
 
   .control-wrapper-inner-container {
@@ -346,7 +418,7 @@
       height: 100%;
       box-shadow: -2px 0px 4px 2px rgba(0,0,0,0.15);
       position: relative;
-      overflow-y: auto;
+      overflow-y: scroll;
       overflow-x: hidden;
       cursor: default;
     }
@@ -358,6 +430,47 @@
   display: flex;
   flex-direction: column;
   border-bottom: 1px solid #ccc;
+
+  .collapsible-toggle {
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #ccc;
+    transition: border-bottom-color 0.3s;
+    margin-bottom: 10px;
+
+    &:hover {
+      cursor: pointer;
+      border-bottom-color: #939393;
+    }
+
+    .color-control-caret {
+      transition: transform 0.2s;
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    &.open {
+      .color-control-caret {
+        transform: rotate(180deg);
+      }
+    }
+
+  }
+
+  .collapsible-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s ease-out;
+    padding: 0 8px;
+
+    &.open {
+      max-height: 250px;
+    }
+  }
 
   .color-picker-inner-container {
     display: flex;
@@ -483,7 +596,7 @@
     margin-top: 20px;
     height: 30px;
     user-select: none;
-
+    padding-bottom: 10px;
     .color-control-button {
       flex: 1;
       border: 1px solid #ccc;

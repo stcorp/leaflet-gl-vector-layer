@@ -20,7 +20,7 @@ import {
 import { ControlsService, ILimitsSubject } from './services/controls-service';
 import chroma from 'chroma-js';
 import { ColorService } from './services/color-service';
-import { filter, Subscription } from 'rxjs';
+import { filter, ReplaySubject, takeUntil } from 'rxjs';
 import { IHandler } from './types/handlers';
 export interface ExtendedOptions extends L.GridLayerOptions {
     leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions
@@ -36,11 +36,11 @@ export class LeafletGlVectorLayer extends L.GridLayer {
     public currentGradient: chroma.Scale|undefined;
     private isFirstRun = true;
     public isHidden = false;
-    private subscriptions: Subscription[] = [];
     private handlers: IHandler[] = [];
     private controlsService: ControlsService;
     private colorService: ColorService;
-    private options: ExtendedOptions;
+    private destroyed$ = new ReplaySubject(1);
+    public options: ExtendedOptions;
     constructor(newOptions: ExtendedOptions) {
         super(newOptions);
         this.id = guidGenerator();
@@ -71,6 +71,8 @@ export class LeafletGlVectorLayer extends L.GridLayer {
     }
 
     public cleanUp() {
+        this.destroyed$.next(true);
+        this.destroyed$.complete();
         this.canvas.remove();
         this.renderer?.cleanUp();
         this.dataHelper.cleanUp();
@@ -81,10 +83,6 @@ export class LeafletGlVectorLayer extends L.GridLayer {
         this.handlers = [];
         this._map = undefined;
         this.currentGradient = undefined;
-        for(let subscription of this.subscriptions) {
-            subscription.unsubscribe();
-        }
-        this.subscriptions = [];
     }
 
     public onAdd(map: Map) {
@@ -103,6 +101,7 @@ export class LeafletGlVectorLayer extends L.GridLayer {
         }
 
         this.dataHelper = new DataHelper(this.options.leafletGlVectorLayerOptions);
+
         this.renderer = new RendererMap[this.options.leafletGlVectorLayerOptions.plot_type](this.options.leafletGlVectorLayerOptions, map, this.dataHelper, this.canvas)
 
 
@@ -139,31 +138,50 @@ export class LeafletGlVectorLayer extends L.GridLayer {
 
         this._reset();
         this.renderer.bindBuffers();
-        let gradientSubscription = this.colorService.gradientSubject.pipe(filter(data => {
-            return data.layer.id === this.id;
-        })).subscribe(data => {
-            this.currentGradient = data.gradient;
-            this.updateColors(data);
-        })
-        let limitsSubscription = this.controlsService.limitsSubject.subscribe(data => {
-            this.updateValues(data);
-        })
 
-        let hideLayerSubscription = this.controlsService.hideLayerSubject.subscribe((layer: LeafletGlVectorLayer) => {
-            if(layer.id === this.id) {
-                this.isHidden = true;
-                this.canvas.style.opacity = '0';
+        this.colorService.gradient$.pipe(
+          takeUntil(this.destroyed$)
+        ).subscribe(gradientData => {
+            if(gradientData.layerId === this.id) {
+                this.currentGradient = gradientData.gradient;
+                this.updateColors();
             }
         });
 
-        let showLayerSubscription = this.controlsService.showLayerSubject.subscribe((layer: LeafletGlVectorLayer) => {
-            if(layer.id === this.id) {
-                this.isHidden = false;
-                this.canvas.style.opacity = `${this.options.opacity ?? 1}`;
+        this.controlsService.limits$.pipe(
+          takeUntil(this.destroyed$),
+        ).subscribe((limits) => {
+            if(!this.currentGradient) {
+                return;
             }
+            this.updateValues(limits);
+        });
+
+        this.controlsService.hideLayer$.pipe(
+          takeUntil(this.destroyed$),
+          filter((layer: LeafletGlVectorLayer) => {
+            return layer.id === this.id;
+          })
+        ).subscribe((layer: LeafletGlVectorLayer) => {
+            this.isHidden = true;
+            this.canvas.style.opacity = '0';
+        });
+
+        this.controlsService.showLayer$.pipe(
+          takeUntil(this.destroyed$),
+          filter((layer: LeafletGlVectorLayer) => {
+            return layer.id === this.id;
+          })
+        ).subscribe(() => {
+            this.isHidden = false;
+            this.canvas.style.opacity = `${this.options.opacity ?? 1}`;
         })
 
-        this.subscriptions.push(gradientSubscription, limitsSubscription, hideLayerSubscription, showLayerSubscription);
+        this.controlsService.setLimits({
+            min: this.dataHelper.currentMinValue ?? this.dataHelper.minValue,
+            max: this.dataHelper.currentMaxValue ?? this.dataHelper.maxValue
+        })
+
         return this;
     }
 
@@ -184,17 +202,15 @@ export class LeafletGlVectorLayer extends L.GridLayer {
         return canvas;
     }
 
-    private updateColors(data: {gradient: chroma.Scale|null|undefined, layer: LeafletGlVectorLayer}): void {
-        if(this.id === data.layer.id) {
-            if(this.renderer && data.gradient) {
-                this.renderer.setCustomColorMap(data.gradient);
-                if(this.isFirstRun) {
-                    this.renderer.processData(this.updateRender.bind(this));
-                    this.isFirstRun = false;
-                } else {
-                    this.renderer.updateColors();
-                    this._reset();
-                }
+    private updateColors(): void {
+        if(this.renderer && this.currentGradient) {
+            this.renderer.setCustomColorMap(this.currentGradient);
+            if(this.isFirstRun) {
+                this.renderer.processData(this.updateRender.bind(this));
+                this.isFirstRun = false;
+            } else {
+                this.renderer.updateColors();
+                this._reset();
             }
         }
     }

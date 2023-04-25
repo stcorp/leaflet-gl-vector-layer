@@ -1,6 +1,6 @@
 import * as L from 'leaflet';
 import { ColorPicker } from './color-picker';
-import { Subject, Subscription } from 'rxjs';
+import { ReplaySubject, Subject, Subscription, takeUntil } from 'rxjs';
 import { ControlsService } from '../services/controls-service';
 import { IHandler } from '../types/handlers';
 import { ColorService, IColorEdgePoint } from '../services/color-service';
@@ -9,15 +9,17 @@ import { getGradientForEdgePoints } from '../helpers/color-transformers';
 export class ColorControl {
   private container: HTMLElement;
   private colorPicker: ColorPicker;
+  private collapsibleToggle: HTMLElement;
+  private collapsibleContent: HTMLElement;
   private limitsChangedSubject = new Subject<{
     type: 'min'|'max';
     value: number;
   }>();
   private dataRangeResetSubject = new Subject<boolean>();
+  private destroyed$ = new ReplaySubject(1);
   private rangeMinInput: HTMLInputElement;
   private rangeMaxInput: HTMLInputElement;
   private handlers: IHandler[] = [];
-  private subscriptions: Subscription[] = [];
   public limits$ = this.limitsChangedSubject.asObservable();
   public dataRangeReset$ = this.dataRangeResetSubject.asObservable();
 
@@ -27,23 +29,39 @@ export class ColorControl {
       max: this.controlsService.selectedLayer?.dataHelper.currentMaxValue
     }
     this.container = L.DomUtil.create('div', 'color-control-container');
+
+    this.collapsibleToggle = L.DomUtil.create('div', 'collapsible-toggle', this.container);
+    this.collapsibleToggle.innerHTML = 'Toggle color-picker';
+    const colorControlCaret = L.DomUtil.create('span', 'color-control-caret', this.collapsibleToggle);
+    colorControlCaret.innerHTML = '<sub><strong>v</strong></sub>';
+    this.collapsibleContent = L.DomUtil.create('div', 'collapsible-content', this.container);
+    if(this.controlsService.isColorPickerOpen) {
+      this.collapsibleContent.classList.add('open');
+      this.collapsibleToggle.classList.add('open');
+    }
+    this.collapsibleToggle.addEventListener('click', () => {
+      this.controlsService.isColorPickerOpen = !this.controlsService.isColorPickerOpen;
+      this.collapsibleContent.classList.toggle('open');
+      this.collapsibleToggle.classList.toggle('open');
+    });
     this.colorPicker = new ColorPicker(this.colorService);
-    let selectedColorSubscription = this.colorService.colorMapSelectedSubject.subscribe((colorCollection) => {
+    this.colorService.colorMapSelected$.pipe(
+      takeUntil(this.destroyed$)
+    ).subscribe((colorCollection) => {
       this.colorPicker.setEdgePoints(colorCollection.colorPickerEdgePoints);
     });
-    let colorWrappersUpdatedSubscription = this.colorPicker.colorEdgePointsUpdated$.subscribe((colorEdgePoints: IColorEdgePoint[]) => {
+
+    this.colorPicker.colorEdgePointsUpdated$.pipe(
+      takeUntil(this.destroyed$)
+    ).subscribe((colorEdgePoints: IColorEdgePoint[]) => {
       let gradient = getGradientForEdgePoints(colorEdgePoints);
       this.colorService.updateEdgePointsOfCurrentColorCollection(colorEdgePoints);
       this.colorService.setGradient(gradient);
     });
-    this.subscriptions.push(colorWrappersUpdatedSubscription);
-    this.subscriptions.push(selectedColorSubscription);
 
-    let header = L.DomUtil.create('div', 'control-section-header', this.container);
-    header.innerHTML = 'Control the color map of the layer';
-    this.container.appendChild(this.colorPicker.initialize());
+    this.collapsibleContent.appendChild(this.colorPicker.initialize());
 
-    let colorControlRangeContainer = L.DomUtil.create('div', 'color-control-range-container', this.container);
+    let colorControlRangeContainer = L.DomUtil.create('div', 'color-control-range-container', this.collapsibleContent);
 
     let colorRangeControlMinContainer = L.DomUtil.create('div', 'color-range-control min', colorControlRangeContainer);
     let colorRangeControlMaxContainer = L.DomUtil.create('div', 'color-range-control max', colorControlRangeContainer);
@@ -74,7 +92,7 @@ export class ColorControl {
     maxHandler['element']?.addEventListener(maxHandler['type'], maxHandler['func']);
     minHandler['element']?.addEventListener(minHandler['type'], minHandler['func']);
 
-    let colorControlButtonContainer = L.DomUtil.create('div', 'color-control-button-container', this.container);
+    let colorControlButtonContainer = L.DomUtil.create('div', 'color-control-button-container', this.collapsibleContent);
 
     let rangeResetButton = L.DomUtil.create('div', 'color-control-button range-reset', colorControlButtonContainer);
     let rangeResetButtonInner = L.DomUtil.create('div', 'toggle-button-inner range-reset-button-inner', rangeResetButton);
@@ -87,15 +105,18 @@ export class ColorControl {
     }
     rangeResetHandler['element'].addEventListener(rangeResetHandler['type'], rangeResetHandler['func']);
 
-    let limitsSubscription = this.controlsService.limitsSubject.subscribe((limits) => {
+    this.controlsService.limits$.pipe(
+      takeUntil(this.destroyed$)
+    ).subscribe((limits) => {
       this.rangeMinInput.value = String(limits.min);
       this.rangeMaxInput.value = String(limits.max);
     });
-    this.subscriptions.push(limitsSubscription);
   }
+
   private onRangeResetClick(event: any) {
     this.dataRangeResetSubject.next(true);
   }
+
   public getContainer() {
     return this.container;
   }
@@ -123,9 +144,6 @@ export class ColorControl {
       if(handler.element) {
         handler.element.removeEventListener(handler.type, handler.func);
       }
-    }
-    for(let subscription of this.subscriptions) {
-      subscription.unsubscribe();
     }
     this.colorPicker.cleanUp();
     this.container.replaceChildren();

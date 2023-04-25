@@ -7,8 +7,9 @@ import { IColor, IColorMap, IRGBA, IXRGBA } from './types/colors';
 import { colormapToXrgbaColormap, fromRGBToWebGl } from './helpers/color-transformers';
 import { colormapToEdgePoints } from './helpers/color-transformers';
 import { isListOfColorMaps } from './helpers/color-map-guard';
+import { LayerOptions } from 'leaflet';
 
-export interface LeafletGlVectorLayerWrapperOptions {
+export interface LeafletGlVectorLayerWrapperOptions extends LayerOptions {
   colormaps?: IColorMap[]|IColorMap;
 }
 
@@ -25,7 +26,7 @@ export class LeafletGlVectorLayerWrapper extends L.Layer {
 
 
 
-  constructor(private options: LeafletGlVectorLayerWrapperOptions) {
+  constructor(public options: LeafletGlVectorLayerWrapperOptions) {
     super();
     this.cleanUp();
 
@@ -127,7 +128,10 @@ export class LeafletGlVectorLayerWrapper extends L.Layer {
 
   public addTo(map: L.Map) {
     this.map = map;
-
+    this.controls = new LeafletGlVectorLayerControls(this.controlsService, this.colorService);
+    this.controls.addTo(this.map);
+    this.controls.controlWrapperInnerContainer.addEventListener('mouseover', this.onMouseOverControlsFunction)
+    this.controls.controlWrapperInnerContainer.addEventListener('mouseout', this.onMouseOutControlsFunction);
     return this;
   }
 
@@ -136,13 +140,6 @@ export class LeafletGlVectorLayerWrapper extends L.Layer {
     layer.addTo(this.map);
     this.layers.push(layer);
     this.controlsService.addLayer(layer);
-    if(!this.controlsService.selectedLayer) {
-      this.controlsService.selectLayer(layer);
-      this.controls = new LeafletGlVectorLayerControls(this.controlsService, this.colorService);
-      this.controls.addTo(this.map);
-      this.controls.controlWrapperInnerContainer.addEventListener('mouseover', this.onMouseOverControlsFunction)
-      this.controls.controlWrapperInnerContainer.addEventListener('mouseout', this.onMouseOutControlsFunction);
-    }
     return this;
   }
 

@@ -1,4 +1,3 @@
-import {LeafletGlVectorLayer} from "../leaflet-gl-vector-layer";
 import { LeafletGlVectorLayerOptions } from '../types/leaflet-gl-vector-layer-options';
 
 export class DataHelper {
@@ -30,7 +29,7 @@ export class DataHelper {
 
     let indexOfLastNonNan;
 
-    for(var i = this.sortedData.length - 1; isNaN(this.sortedData[i]); i--) {
+    for(let i = this.sortedData.length - 1; isNaN(this.sortedData[i]); i--) {
       indexOfLastNonNan = i;
     }
     this.sortedData = this.sortedData.slice(0, indexOfLastNonNan);
