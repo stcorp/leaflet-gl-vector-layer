@@ -102,5 +102,7 @@ export class ColorBar {
     this.destroyed$.next(true);
     this.destroyed$.complete();
     this.resizeObserver.unobserve(this.leafletControlContainer);
+    this.wrapper.replaceChildren();
+    this.wrapper.remove();
   }
 }

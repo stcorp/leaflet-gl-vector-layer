@@ -133,6 +133,9 @@ export class LeafletGlVectorLayerControls extends L.Control {
     if(this.layerControl) {
       this.layerControl.cleanUp();
     }
+    if(this.colorBar) {
+      this.colorBar.cleanUp();
+    }
   }
 
   private createDynamicControls() {
