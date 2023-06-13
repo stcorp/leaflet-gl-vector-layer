@@ -148,7 +148,7 @@ export abstract class BaseRenderer {
             }
         }
         for(let i = 0; i < this.vertexValues.length; i++) {
-            let adjustedValue = (this.vertexValues[i] + this.dataHelper.absoluteCurrentMinValue) / (this.dataHelper.currentMaxValue + this.dataHelper.absoluteCurrentMinValue);
+            let adjustedValue = (this.vertexValues[i] - this.dataHelper.currentMinValue) / ((this.dataHelper.currentMaxValue - this.dataHelper.currentMinValue) || 1);
             let color = this.unwrappedGradient[Math.floor(adjustedValue * this.colorFidelity)];
             let index = i * 6 + 2;
 
@@ -248,7 +248,7 @@ export abstract class BaseRenderer {
     }
 
     protected buildPixel(xy: IPoint, value: number): [number, number, number, number, number, number] {
-        let adjustedValue = (value + this.dataHelper.absoluteCurrentMinValue) / (this.dataHelper.currentMaxValue + this.dataHelper.absoluteCurrentMinValue);
+        let adjustedValue = (value - this.dataHelper.currentMinValue) / ((this.dataHelper.currentMaxValue - this.dataHelper.currentMinValue) || 1);
         let color = this.unwrappedGradient[Math.floor(adjustedValue * this.colorFidelity)];
         return [xy.x, xy.y, color[0]/255, color[1]/255, color[2]/255, color[3]];
     }

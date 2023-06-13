@@ -30,7 +30,7 @@ export class PointsRenderer extends BaseRenderer {
             let pixel = this.map.project([this.data.latitudes[index], this.data.longitudes[index]], 0);
             let value = this.normalizeValue(this.data.values[index]);
             this.vertexValues.push(value);
-            let adjustedValue = (value + this.dataHelper.absoluteCurrentMinValue) / (this.dataHelper.currentMaxValue + this.dataHelper.absoluteCurrentMinValue);
+            let adjustedValue = (value - this.dataHelper.currentMinValue) / ((this.dataHelper.currentMaxValue - this.dataHelper.currentMinValue) || 1);
             let color = this.unwrappedGradient[Math.floor(adjustedValue * this.colorFidelity)];
             this.vertices.push(pixel.x, pixel.y, color[0]/255, color[1]/255, color[2]/255, color[3]);
         }

@@ -6,8 +6,6 @@ export class DataHelper {
   public currentMinValue: number;
   public currentMaxValue: number;
   public maxValue: number;
-  public absoluteCurrentMinValue: number;
-  public absoluteCurrentMaxValue: number;
   public mean: number;
   public median: number;
   private options: LeafletGlVectorLayerOptions;
@@ -44,8 +42,6 @@ export class DataHelper {
   public updateLimits(limits: {min: number, max: number}) {
     this.currentMinValue = limits.min;
     this.currentMaxValue = limits.max;
-    this.absoluteCurrentMinValue = Math.abs(this.currentMinValue);
-    this.absoluteCurrentMaxValue = Math.abs(this.currentMaxValue);
   }
 
   public getMax() {
@@ -56,7 +52,6 @@ export class DataHelper {
     } else {
       this.currentMaxValue = this.maxValue;
     }
-    this.absoluteCurrentMaxValue = Math.abs(this.currentMaxValue);
     return this.maxValue;
   }
 
@@ -68,7 +63,6 @@ export class DataHelper {
     } else {
       this.currentMinValue = this.minValue;
     }
-    this.absoluteCurrentMinValue = Math.abs(this.currentMinValue);
     return this.minValue;
   }
 
