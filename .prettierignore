@@ -48,3 +48,9 @@ Thumbs.db
 
 # Sentry Auth Token
 .sentryclirc
+
+*.json
+*.yaml
+*.yml
+*.md
+*.config.*

@@ -12,12 +12,12 @@ export class DataHelper {
 
   constructor(options: LeafletGlVectorLayerOptions) {
     this.options = {
-      ...options
+      ...options,
     };
     this.sortedData = options.data.values.slice(0).sort();
     let firstNonInfIndex = 0;
-    for(let i = 0; i < this.sortedData.length; i++) {
-      if(this.sortedData[i] > -Infinity) {
+    for (let i = 0; i < this.sortedData.length; i++) {
+      if (this.sortedData[i] > -Infinity) {
         firstNonInfIndex = i;
         break;
       }
@@ -27,11 +27,10 @@ export class DataHelper {
 
     let indexOfLastNonNan;
 
-    for(let i = this.sortedData.length - 1; isNaN(this.sortedData[i]); i--) {
+    for (let i = this.sortedData.length - 1; isNaN(this.sortedData[i]); i--) {
       indexOfLastNonNan = i;
     }
     this.sortedData = this.sortedData.slice(0, indexOfLastNonNan);
-
 
     this.getMax();
     this.getMin();
@@ -39,15 +38,15 @@ export class DataHelper {
     this.getMedian();
   }
 
-  public updateLimits(limits: {min: number, max: number}) {
+  public updateLimits(limits: { min: number; max: number }) {
     this.currentMinValue = limits.min;
     this.currentMaxValue = limits.max;
   }
 
   public getMax() {
-    let existingColorRange = this.options.colorrange;
+    const existingColorRange = this.options.colorrange;
     this.maxValue = this.sortedData[this.sortedData.length - 1];
-    if(existingColorRange?.length) {
+    if (existingColorRange?.length) {
       this.currentMaxValue = existingColorRange[1];
     } else {
       this.currentMaxValue = this.maxValue;
@@ -56,9 +55,9 @@ export class DataHelper {
   }
 
   public getMin() {
-    let existingColorRange = this.options.colorrange;
+    const existingColorRange = this.options.colorrange;
     this.minValue = this.sortedData[0];
-    if(existingColorRange?.length) {
+    if (existingColorRange?.length) {
       this.currentMinValue = existingColorRange[0];
     } else {
       this.currentMinValue = this.minValue;
@@ -67,7 +66,7 @@ export class DataHelper {
   }
 
   public getMedian() {
-    let median = this.sortedData[Math.floor(this.sortedData.length / 2)];
+    const median = this.sortedData[Math.floor(this.sortedData.length / 2)];
     this.median = parseFloat(median.toFixed(2));
     return this.median;
   }
@@ -78,8 +77,8 @@ export class DataHelper {
     return this.mean;
   }
 
-  public setValue(type: 'min'|'max', value: number) {
-    if(type === 'min') {
+  public setValue(type: 'min' | 'max', value: number) {
+    if (type === 'min') {
       this.currentMinValue = value;
     } else {
       this.currentMaxValue = value;

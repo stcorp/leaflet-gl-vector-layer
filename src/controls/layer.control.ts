@@ -13,29 +13,25 @@ export class LayerControl {
   private handlers: IHandler[] = [];
   private subscriptions: Subscription[] = [];
   private layers: LeafletGlVectorLayer[] = [];
-  private selectedLayer: LeafletGlVectorLayer|undefined;
+  private selectedLayer: LeafletGlVectorLayer | undefined;
   private destroyed$ = new ReplaySubject(1);
 
   constructor(private controlsService: ControlsService) {
     this.container = L.DomUtil.create('div', 'layer-selection-container');
-    let layerSelectionHeader = L.DomUtil.create('div', 'control-section-header', this.container);
+    const layerSelectionHeader = L.DomUtil.create('div', 'control-section-header', this.container);
     layerSelectionHeader.innerHTML = 'Select and show/hide layers';
-    let layerCheckboxContainer = L.DomUtil.create('div', 'layer-checkbox-container', this.container);
+    const layerCheckboxContainer = L.DomUtil.create('div', 'layer-checkbox-container', this.container);
 
     this.selectedLayer = this.controlsService.selectedLayer;
     this.layers = this.controlsService.getCurrentLayers();
-    this.controlsService.currentLayers$.pipe(
-      takeUntil(this.destroyed$)
-    ).subscribe((layers: LeafletGlVectorLayer[]) => {
+    this.controlsService.currentLayers$.pipe(takeUntil(this.destroyed$)).subscribe((layers: LeafletGlVectorLayer[]) => {
       this.layers = layers;
       layerCheckboxContainer.replaceChildren();
-      for(let i = 0; i < this.layers.length; i++) {
+      for (let i = 0; i < this.layers.length; i++) {
         this.createLayerToggleCheckbox(this.layers[i], i + 1, layerCheckboxContainer);
       }
     });
-    this.controlsService.layerSelected$.pipe(
-      takeUntil(this.destroyed$)
-    ).subscribe((layer: LeafletGlVectorLayer) => {
+    this.controlsService.layerSelected$.pipe(takeUntil(this.destroyed$)).subscribe((layer: LeafletGlVectorLayer) => {
       this.selectedLayer = layer;
     });
   }
@@ -44,43 +40,42 @@ export class LayerControl {
     return this.container;
   }
 
-
   private createLayerToggleCheckbox(layer: LeafletGlVectorLayer, index: number, layerCheckboxContainer: HTMLElement) {
-    let checkboxContainer = L.DomUtil.create('div', 'layer-selection-checkbox-container', layerCheckboxContainer);
-    if(this.selectedLayer?.id === layer.id) {
+    const checkboxContainer = L.DomUtil.create('div', 'layer-selection-checkbox-container', layerCheckboxContainer);
+    if (this.selectedLayer?.id === layer.id) {
       checkboxContainer.classList.add('selected');
     }
-    let checkbox = L.DomUtil.create('input', 'layer-selection-checkbox-label', checkboxContainer);
+    const checkbox = L.DomUtil.create('input', 'layer-selection-checkbox-label', checkboxContainer);
     checkbox.type = 'checkbox';
     checkbox.id = layer.id;
     checkbox.checked = !layer.isHidden;
-    let label = L.DomUtil.create('span', 'layer-selection-checkbox-label', checkboxContainer);
+    const label = L.DomUtil.create('span', 'layer-selection-checkbox-label', checkboxContainer);
     label.innerHTML = `Layer ${index}`;
 
-    let labelClickHandler = {
+    const labelClickHandler = {
       element: label,
       func: (event: any) => {
         event.stopPropagation();
         this.controlsService.selectLayer(layer);
       },
-      type: 'click'
-    }
+      type: 'click',
+    };
     this.handlers.push(labelClickHandler);
     labelClickHandler.element.addEventListener(labelClickHandler.type, labelClickHandler.func);
 
-    let checkboxClickHandler = {
+    const checkboxClickHandler = {
       element: checkbox,
       func: (event: any) => {
-        if(event.currentTarget.checked) {
+        if (event.currentTarget.checked) {
           this.showLayer(layer);
         } else {
           this.hideLayer(layer);
         }
       },
-      type: 'change'
-    }
+      type: 'change',
+    };
     this.handlers.push(checkboxClickHandler);
-    checkboxClickHandler.element.addEventListener(checkboxClickHandler.type, checkboxClickHandler.func)
+    checkboxClickHandler.element.addEventListener(checkboxClickHandler.type, checkboxClickHandler.func);
   }
 
   private showLayer(layer: LeafletGlVectorLayer) {
@@ -94,8 +89,8 @@ export class LayerControl {
   public cleanUp() {
     this.destroyed$.next(true);
     this.destroyed$.complete();
-    for(let handler of this.handlers) {
-      if(handler.element) {
+    for (const handler of this.handlers) {
+      if (handler.element) {
         handler.element.removeEventListener(handler.type, handler.func);
       }
     }
@@ -104,5 +99,4 @@ export class LayerControl {
     this.selectedLayer = undefined;
     this.container.replaceChildren();
   }
-
 }

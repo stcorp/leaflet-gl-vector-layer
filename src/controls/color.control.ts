@@ -12,7 +12,7 @@ export class ColorControl {
   private collapsibleToggle: HTMLElement;
   private collapsibleContent: HTMLElement;
   private limitsChangedSubject = new Subject<{
-    type: 'min'|'max';
+    type: 'min' | 'max';
     value: number;
   }>();
   private dataRangeResetSubject = new Subject<boolean>();
@@ -23,11 +23,14 @@ export class ColorControl {
   public limits$ = this.limitsChangedSubject.asObservable();
   public dataRangeReset$ = this.dataRangeResetSubject.asObservable();
 
-  constructor(private controlsService: ControlsService, private colorService: ColorService) {
-    let defaultLimits = {
+  constructor(
+    private controlsService: ControlsService,
+    private colorService: ColorService
+  ) {
+    const defaultLimits = {
       min: this.controlsService.selectedLayer?.dataHelper.currentMinValue,
-      max: this.controlsService.selectedLayer?.dataHelper.currentMaxValue
-    }
+      max: this.controlsService.selectedLayer?.dataHelper.currentMaxValue,
+    };
     this.container = L.DomUtil.create('div', 'color-control-container');
 
     this.collapsibleToggle = L.DomUtil.create('div', 'collapsible-toggle', this.container);
@@ -35,7 +38,7 @@ export class ColorControl {
     const colorControlCaret = L.DomUtil.create('span', 'color-control-caret', this.collapsibleToggle);
     colorControlCaret.innerHTML = '<sub><strong>v</strong></sub>';
     this.collapsibleContent = L.DomUtil.create('div', 'collapsible-content', this.container);
-    if(this.controlsService.isColorPickerOpen) {
+    if (this.controlsService.isColorPickerOpen) {
       this.collapsibleContent.classList.add('open');
       this.collapsibleToggle.classList.add('open');
     }
@@ -45,69 +48,84 @@ export class ColorControl {
       this.collapsibleToggle.classList.toggle('open');
     });
     this.colorPicker = new ColorPicker(this.colorService);
-    this.colorService.colorMapSelected$.pipe(
-      takeUntil(this.destroyed$)
-    ).subscribe((colorCollection) => {
+    this.colorService.colorMapSelected$.pipe(takeUntil(this.destroyed$)).subscribe(colorCollection => {
       this.colorPicker.setEdgePoints(colorCollection.colorPickerEdgePoints);
     });
 
-    this.colorPicker.colorEdgePointsUpdated$.pipe(
-      takeUntil(this.destroyed$)
-    ).subscribe((colorEdgePoints: IColorEdgePoint[]) => {
-      let gradient = getGradientForEdgePoints(colorEdgePoints);
-      this.colorService.updateEdgePointsOfCurrentColorCollection(colorEdgePoints);
-      this.colorService.setGradient(gradient);
-    });
+    this.colorPicker.colorEdgePointsUpdated$
+      .pipe(takeUntil(this.destroyed$))
+      .subscribe((colorEdgePoints: IColorEdgePoint[]) => {
+        const gradient = getGradientForEdgePoints(colorEdgePoints);
+        this.colorService.updateEdgePointsOfCurrentColorCollection(colorEdgePoints);
+        this.colorService.setGradient(gradient);
+      });
 
     this.collapsibleContent.appendChild(this.colorPicker.initialize());
 
-    let colorControlRangeContainer = L.DomUtil.create('div', 'color-control-range-container', this.collapsibleContent);
+    const colorControlRangeContainer = L.DomUtil.create(
+      'div',
+      'color-control-range-container',
+      this.collapsibleContent
+    );
 
-    let colorRangeControlMinContainer = L.DomUtil.create('div', 'color-range-control min', colorControlRangeContainer);
-    let colorRangeControlMaxContainer = L.DomUtil.create('div', 'color-range-control max', colorControlRangeContainer);
-    let rangeMinLabel = L.DomUtil.create('span', 'color-range-control-label min', colorRangeControlMinContainer);
-    let rangeMaxLabel = L.DomUtil.create('span', 'color-range-control-label max', colorRangeControlMaxContainer);
+    const colorRangeControlMinContainer = L.DomUtil.create(
+      'div',
+      'color-range-control min',
+      colorControlRangeContainer
+    );
+    const colorRangeControlMaxContainer = L.DomUtil.create(
+      'div',
+      'color-range-control max',
+      colorControlRangeContainer
+    );
+    const rangeMinLabel = L.DomUtil.create('span', 'color-range-control-label min', colorRangeControlMinContainer);
+    const rangeMaxLabel = L.DomUtil.create('span', 'color-range-control-label max', colorRangeControlMaxContainer);
     rangeMinLabel.innerHTML = 'Limit to min-value:';
     rangeMaxLabel.innerHTML = 'Limit to max-value:';
     this.rangeMinInput = L.DomUtil.create('input', 'color-range-control-input min', colorRangeControlMinContainer);
     this.rangeMaxInput = L.DomUtil.create('input', 'color-range-control-input max', colorRangeControlMaxContainer);
 
-
     this.rangeMaxInput.type = 'number';
     this.rangeMinInput.type = 'number';
     this.rangeMinInput.value = String(defaultLimits.min);
     this.rangeMaxInput.value = String(defaultLimits.max);
-    let maxHandler = {
+    const maxHandler = {
       element: this.rangeMaxInput,
       func: this.onDataRangeChange.bind(this, 'max'),
-      type: 'change'
-    }
-    let minHandler = {
+      type: 'change',
+    };
+    const minHandler = {
       element: this.rangeMinInput,
       func: this.onDataRangeChange.bind(this, 'min'),
-      type: 'change'
-    }
+      type: 'change',
+    };
     this.handlers.push(maxHandler);
     this.handlers.push(minHandler);
     maxHandler['element']?.addEventListener(maxHandler['type'], maxHandler['func']);
     minHandler['element']?.addEventListener(minHandler['type'], minHandler['func']);
 
-    let colorControlButtonContainer = L.DomUtil.create('div', 'color-control-button-container', this.collapsibleContent);
+    const colorControlButtonContainer = L.DomUtil.create(
+      'div',
+      'color-control-button-container',
+      this.collapsibleContent
+    );
 
-    let rangeResetButton = L.DomUtil.create('div', 'color-control-button range-reset', colorControlButtonContainer);
-    let rangeResetButtonInner = L.DomUtil.create('div', 'toggle-button-inner range-reset-button-inner', rangeResetButton);
+    const rangeResetButton = L.DomUtil.create('div', 'color-control-button range-reset', colorControlButtonContainer);
+    const rangeResetButtonInner = L.DomUtil.create(
+      'div',
+      'toggle-button-inner range-reset-button-inner',
+      rangeResetButton
+    );
     rangeResetButtonInner.innerHTML = 'Reset data range';
 
-    let rangeResetHandler = {
+    const rangeResetHandler = {
       element: rangeResetButton,
       func: this.onRangeResetClick.bind(this),
-      type: 'click'
-    }
+      type: 'click',
+    };
     rangeResetHandler['element'].addEventListener(rangeResetHandler['type'], rangeResetHandler['func']);
 
-    this.controlsService.limits$.pipe(
-      takeUntil(this.destroyed$)
-    ).subscribe((limits) => {
+    this.controlsService.limits$.pipe(takeUntil(this.destroyed$)).subscribe(limits => {
       this.rangeMinInput.value = String(limits.min);
       this.rangeMaxInput.value = String(limits.max);
     });
@@ -121,27 +139,27 @@ export class ColorControl {
     return this.container;
   }
 
-  private onDataRangeChange(type: 'min'|'max', event: any) {
+  private onDataRangeChange(type: 'min' | 'max', event: any) {
     let value = event.target.value;
-    if(value === '') {
+    if (value === '') {
       value = 0;
     }
-    if(type === 'max') {
+    if (type === 'max') {
       this.limitsChangedSubject.next({
         value: parseFloat(this.rangeMaxInput.value),
-        type
-      })
+        type,
+      });
     } else {
       this.limitsChangedSubject.next({
         type,
-        value: parseFloat(this.rangeMinInput.value)
-      })
+        value: parseFloat(this.rangeMinInput.value),
+      });
     }
   }
 
   public cleanUp() {
-    for(let handler of this.handlers) {
-      if(handler.element) {
+    for (const handler of this.handlers) {
+      if (handler.element) {
         handler.element.removeEventListener(handler.type, handler.func);
       }
     }

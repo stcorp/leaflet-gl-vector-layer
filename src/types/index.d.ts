@@ -1,15 +1,15 @@
 /// <reference types="chroma-js" />
-import * as L from "leaflet";
-import {Bounds, LatLng, LatLngBounds, Layer, Map, Point} from "leaflet";
-import {GridRenderer} from "../grid-renderer";
-import {PointsRenderer} from "../points-renderer";
-import {SwathRenderer} from "../swath-renderer";
-import {DataHelper} from "../helpers/data-helper";
+import * as L from 'leaflet';
+import { Bounds, LatLng, LatLngBounds, Layer, Map, Point } from 'leaflet';
+import { GridRenderer } from '../grid-renderer';
+import { PointsRenderer } from '../points-renderer';
+import { SwathRenderer } from '../swath-renderer';
+import { DataHelper } from '../helpers/data-helper';
 import { LeafletGlVectorLayerControls } from '../controls/leaflet-gl-vector-layer-controls';
 import { ExtendedOptions } from '../leaflet-gl-vector-layer';
 import { IHandler } from './handlers';
 import { Subscription } from 'rxjs';
-import {LeafletGlVectorLayerOptions} from "./leaflet-gl-vector-layer-options";
+import { LeafletGlVectorLayerOptions } from './leaflet-gl-vector-layer-options';
 
 export class LeafletGlVectorLayer extends Layer {
   canvas: HTMLCanvasElement;
@@ -45,7 +45,7 @@ export class LeafletGlVectorLayer extends Layer {
 
 export class LeafletGlVectorLayerWrapper extends L.Layer {
   private layers: LeafletGlVectorLayer[];
-  controls: LeafletGlVectorLayerControls|undefined;
+  controls: LeafletGlVectorLayerControls | undefined;
   map: L.Map;
   constructor();
   onAdd(map: L.Map): this;

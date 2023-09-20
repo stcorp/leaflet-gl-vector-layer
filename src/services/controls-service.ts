@@ -1,8 +1,6 @@
 import { BehaviorSubject, ReplaySubject, Subject } from 'rxjs';
 import { LeafletGlVectorLayer } from '../leaflet-gl-vector-layer';
-import {
-  LeafletGlVectorLayerOptions,
-} from '../types/typings';
+import { LeafletGlVectorLayerOptions } from '../types/typings';
 
 export interface ILimitsSubject {
   min: number;
@@ -17,7 +15,7 @@ export class ControlsService {
   private showLayerSubject = new Subject<LeafletGlVectorLayer>();
   private hideLayerSubject = new Subject<LeafletGlVectorLayer>();
 
-  public selectedLayer: LeafletGlVectorLayer|undefined;
+  public selectedLayer: LeafletGlVectorLayer | undefined;
   public currentLayers: LeafletGlVectorLayer[] = [];
   public options: any = {};
   public isColorPickerOpen = false;
@@ -25,7 +23,7 @@ export class ControlsService {
     [layerId: string]: {
       min: number;
       max: number;
-    }
+    };
   } = {};
 
   public hideLayer$ = this.hideLayerSubject.asObservable();
@@ -34,14 +32,12 @@ export class ControlsService {
   public addLayer$ = this.addLayerSubject.asObservable();
   public layerSelected$ = this.layerSelectedSubject.asObservable();
   public limits$ = this.limitsSubject.asObservable();
-  constructor() {
-
-  }
+  constructor() {}
 
   public selectLayer(layer: LeafletGlVectorLayer) {
     this.selectedLayer = layer;
     this.layerSelectedSubject.next(layer);
-    if(this.limitsPerLayer[layer.id]) {
+    if (this.limitsPerLayer[layer.id]) {
       this.limitsSubject.next(this.limitsPerLayer[layer.id]);
     }
   }
@@ -50,7 +46,7 @@ export class ControlsService {
     this.addLayerSubject.next(layer);
     this.currentLayers.push(layer);
     this.currentLayersSubject.next(this.currentLayers);
-    if(this.currentLayers.length === 1) {
+    if (this.currentLayers.length === 1) {
       this.selectLayer(layer);
     }
   }
@@ -63,15 +59,12 @@ export class ControlsService {
     this.hideLayerSubject.next(layer);
   }
 
-  public setLimits(limits: {
-    min: number,
-    max: number
-  }) {
-    if(this.selectedLayer) {
+  public setLimits(limits: { min: number; max: number }) {
+    if (this.selectedLayer) {
       this.limitsPerLayer[this.selectedLayer?.id] = {
         min: limits.min,
-        max: limits.max
-      }
+        max: limits.max,
+      };
     }
     this.limitsSubject.next(limits);
   }
@@ -81,8 +74,8 @@ export class ControlsService {
   }
 
   public getOptions(layerId?: string) {
-    if(!layerId) {
-      if(this.selectedLayer) {
+    if (!layerId) {
+      if (this.selectedLayer) {
         return this.options[this.selectedLayer.id];
       } else {
         return undefined;
@@ -96,7 +89,7 @@ export class ControlsService {
   }
 
   public cleanUp(clearSubjects: boolean = false) {
-    if(clearSubjects) {
+    if (clearSubjects) {
       this.currentLayersSubject.next([]);
       this.currentLayersSubject.complete();
       this.layerSelectedSubject.complete();
