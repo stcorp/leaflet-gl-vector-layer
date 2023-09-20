@@ -1,4 +1,4 @@
-import { LeafletGlVectorLayerOptions } from '../types/leaflet-gl-vector-layer-options';
+import { LeafletGlVectorLayerOptions } from '../types/typings';
 
 export class DataHelper {
   private sortedData: Float32Array;

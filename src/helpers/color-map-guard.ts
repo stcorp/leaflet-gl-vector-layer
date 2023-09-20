@@ -1,4 +1,4 @@
-import { IColorMap } from '../types/colors';
+import { IColorMap } from '../types/typings';
 
 export function isListOfColorMaps(colormap: IColorMap|IColorMap[]) {
   return colormap.some((element: any) => {

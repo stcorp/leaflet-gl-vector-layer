@@ -2,7 +2,7 @@ import * as L from 'leaflet';
 import { LeafletGlVectorLayer } from '../leaflet-gl-vector-layer';
 import { ControlsService } from '../services/controls-service';
 import { ReplaySubject, Subject, Subscription, takeUntil } from 'rxjs';
-import { IHandler } from '../types/handlers';
+import { IHandler } from '../types/typings';
 
 export class LayerControl {
   private container;

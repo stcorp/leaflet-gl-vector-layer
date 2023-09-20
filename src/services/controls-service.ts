@@ -2,7 +2,7 @@ import { BehaviorSubject, ReplaySubject, Subject } from 'rxjs';
 import { LeafletGlVectorLayer } from '../leaflet-gl-vector-layer';
 import {
   LeafletGlVectorLayerOptions,
-} from '../types/leaflet-gl-vector-layer-options';
+} from '../types/typings';
 
 export interface ILimitsSubject {
   min: number;

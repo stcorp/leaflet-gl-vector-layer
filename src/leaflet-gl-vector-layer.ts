@@ -16,12 +16,12 @@ import {DataHelper} from "./helpers/data-helper";
 import {guidGenerator} from "./helpers/guid-generator";
 import {
     LeafletGlVectorLayerOptions,
-} from "./types/leaflet-gl-vector-layer-options";
+} from "./types/typings";
 import { ControlsService, ILimitsSubject } from './services/controls-service';
 import chroma from 'chroma-js';
 import { ColorService } from './services/color-service';
 import { filter, ReplaySubject, takeUntil } from 'rxjs';
-import { IHandler } from './types/handlers';
+import { IHandler } from './types/typings';
 export interface ExtendedOptions extends L.GridLayerOptions {
     leafletGlVectorLayerOptions: LeafletGlVectorLayerOptions
 }

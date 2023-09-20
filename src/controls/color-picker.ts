@@ -1,10 +1,10 @@
 import { guidGenerator } from '../helpers/guid-generator';
 import * as L from 'leaflet';
 import { ColorService, IColorEdgePoint, IColorSlider } from '../services/color-service';
-import { IHandler } from '../types/handlers';
+import { IHandler } from '../types/typings';
 import { ReplaySubject, Subject, Subscription, takeUntil } from 'rxjs';
 import { IroColor } from '@irojs/iro-core/dist/color';
-import { IRGBA } from '../types/colors';
+import { IRGBA } from '../types/typings';
 import { getGradientForEdgePoints } from '../helpers/color-transformers';
 export class ColorPicker {
 

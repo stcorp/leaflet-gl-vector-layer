@@ -2,7 +2,7 @@ import * as L from 'leaflet';
 import { ColorPicker } from './color-picker';
 import { ReplaySubject, Subject, Subscription, takeUntil } from 'rxjs';
 import { ControlsService } from '../services/controls-service';
-import { IHandler } from '../types/handlers';
+import { IHandler } from '../types/typings';
 import { ColorService, IColorEdgePoint } from '../services/color-service';
 import { getGradientForEdgePoints } from '../helpers/color-transformers';
 

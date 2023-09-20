@@ -1,4 +1,4 @@
-import { IColor, IXRGBA } from '../types/colors';
+import { IColor, IXRGBA } from '../types/typings';
 import { IColorEdgePoint } from '../services/color-service';
 import chroma from 'chroma-js';
 

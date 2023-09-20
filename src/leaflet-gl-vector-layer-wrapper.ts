@@ -3,7 +3,7 @@ import * as L from 'leaflet';
 import { ControlsService } from './services/controls-service';
 import { LeafletGlVectorLayerControls } from './controls/leaflet-gl-vector-layer-controls';
 import { ColorService, IColorCollection } from './services/color-service';
-import { IColor, IColorMap, IRGBA, IXRGBA } from './types/colors';
+import { IColor, IColorMap, IRGBA, IXRGBA } from './types/typings';
 import { colormapToXrgbaColormap, fromRGBToWebGl } from './helpers/color-transformers';
 import { colormapToEdgePoints } from './helpers/color-transformers';
 import { isListOfColorMaps } from './helpers/color-map-guard';

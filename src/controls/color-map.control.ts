@@ -1,9 +1,9 @@
 import * as L from 'leaflet';
 import { guidGenerator } from '../helpers/guid-generator';
 import { Subject } from 'rxjs';
-import { IHandler } from '../types/handlers';
+import { IHandler } from '../types/typings';
 import isEqual from 'lodash/isEqual';
-import { IXRGBA } from '../types/colors';
+import { IXRGBA } from '../types/typings';
 
 
 export interface IColorMapWrapper {

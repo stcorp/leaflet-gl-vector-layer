@@ -1,8 +1,8 @@
 import {BaseRenderer} from "./base-renderer";
-import {LeafletGlVectorLayerOptions} from "./types/leaflet-gl-vector-layer-options";
+import {LeafletGlVectorLayerOptions} from "./types/typings";
 import {DataHelper} from "./helpers/data-helper";
-import {IData} from "./types/data";
-import { IQuad, ITriangle} from "./types/polygon";
+import {IData} from "./types/typings";
+import { IQuad, ITriangle} from "./types/typings";
 export class SwathRenderer extends BaseRenderer {
 
     private data: IData;

@@ -2,7 +2,7 @@ import { LeafletGlVectorLayer } from '../leaflet-gl-vector-layer';
 import { ControlsService } from './controls-service';
 import { BehaviorSubject, ReplaySubject, Subject, takeUntil } from 'rxjs';
 import cloneDeep from 'lodash/cloneDeep';
-import { IColor, IRGBA, IXRGBA } from '../types/colors';
+import { IColor, IRGBA, IXRGBA } from '../types/typings';
 import { colormapToXrgbaColormap, colorWrappersToXrgbaColormap } from '../helpers/color-transformers';
 import { colormapToEdgePoints, getGradientForEdgePoints } from '../helpers/color-transformers';
 import { IroColor } from '@irojs/iro-core/dist/color';

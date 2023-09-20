@@ -1,9 +1,9 @@
 import {BaseRenderer} from "./base-renderer";
-import {LeafletGlVectorLayerOptions} from "./types/leaflet-gl-vector-layer-options";
+import {LeafletGlVectorLayerOptions} from "./types/typings";
 import {Map} from "leaflet";
 import {DataHelper} from "./helpers/data-helper";
-import {IData} from "./types/data";
-import {IPolygon, IQuad, ITriangle} from "./types/shapes";
+import {IData} from "./types/typings";
+import {IPolygon, IQuad, ITriangle} from "./types/typings";
 
 export class GridRenderer extends BaseRenderer {
 
