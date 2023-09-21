@@ -43,6 +43,7 @@ async function initData(mode: 'points' | 'grid' | 'swath') {
         [1, 0, 0],
       ],
       colorrange: [0, 2],
+      label: 'layer 1',
     },
   };
   const leafletGlVectorLayerOptions2: any = {
@@ -51,6 +52,7 @@ async function initData(mode: 'points' | 'grid' | 'swath') {
         ...data2,
       },
       plot_type: 'grid',
+      label: 'layer 2',
     },
   };
   const newGL = new LeafletGlVectorLayerWrapper(leafletGlVectorLayerWrapperOptions);

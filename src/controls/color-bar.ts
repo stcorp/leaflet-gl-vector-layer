@@ -28,7 +28,7 @@ export class ColorBar {
     this.tickContainer = L.DomUtil.create('div', 'color-bar-tick-container', this.barWrapper);
     this.label = L.DomUtil.create('div', 'color-bar-label', this.barWrapper);
     this.bar = L.DomUtil.create('canvas', 'color-bar', this.barWrapper);
-    this.bar.height = 30;
+    this.bar.height = 24;
 
     this.leafletControlContainer = document.querySelector('.leaflet-control-container') as HTMLElement;
     this.resizeObserver = new ResizeObserver(this.throttledResizeBar.bind(this));
@@ -51,7 +51,7 @@ export class ColorBar {
         const tickBar = L.DomUtil.create('div', 'tick-bar', tickWrapper);
         const tick = L.DomUtil.create('div', 'tick', tickWrapper);
         const number = min + (range / tickCount) * i;
-        if (number > 1000 || (number < 0.01 && number !== 0)) {
+        if (Math.abs(number) >= 10000 || (Math.abs(number) < 0.01 && number !== 0)) {
           tick.innerHTML = number.toExponential(2);
         } else {
           tick.innerHTML = (min + (range / tickCount) * i).toFixed(2);
